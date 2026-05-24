@@ -26,8 +26,8 @@ class EmployeeRequest extends FormRequest
 
             // Optional backward compatibility: allow nationality text, but UI should use country_id
 
-            'wps_personal_number'=> 'nullable|string|max:50',
-            'joining_date'       => 'required|date',
+            'wps_personal_number' => 'nullable|string|max:50',
+            'joining_date'       => 'nullable|date',
             'department_id'      => 'required|exists:departments,id',
             'designation_id'     => 'required|exists:designations,id',
             'status'             => 'nullable|in:active,inactive',
@@ -41,7 +41,9 @@ class EmployeeRequest extends FormRequest
 
             // Deductions
             'food_deduction'       => 'nullable|numeric|min:0',
+            // visa_deduction now represents TOTAL visa charges (installment recovery)
             'visa_deduction'       => 'nullable|numeric|min:0',
+            'visa_total_installments' => 'nullable|integer|min:1|max:120',
             'insurance_deduction'  => 'nullable|numeric|min:0',
             'advance_payment'      => 'nullable|numeric|min:0',
             'other_deduction'      => 'nullable|numeric|min:0',

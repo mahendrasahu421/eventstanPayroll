@@ -18,7 +18,13 @@ Route::post('logout', [LoginController::class, 'logout'])->name('logout');
 // ── Authenticated Routes ──────────────────────────────────────────────────────
 
 Route::middleware(['auth'])->group(function () {
+    Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
+    Route::post('/settings', [SettingsController::class, 'update'])->name('settings.update');
+    Route::get('/activity-logs', [SettingsController::class, 'activityLogs'])->name('activity-logs');
 
+    // Employee documents for all employees (admin/super_admin)
+    Route::get('/employee-documents', [SettingsController::class, 'employeeDocuments'])
+        ->name('employee-documents');
     // Dashboard
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
@@ -32,6 +38,7 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/{employee}', [EmployeeController::class, 'update'])->name('update');
         Route::delete('/{employee}', [EmployeeController::class, 'destroy'])->name('destroy');
 
+        Route::get('/ajax', [EmployeeController::class, 'ajaxEmployees'])->name('ajax');
         // Salary setup
         Route::get('/{employee}/salary', [EmployeeController::class, 'salarySetup'])->name('salary');
         Route::post('/{employee}/salary', [EmployeeController::class, 'saveSalarySetup'])->name('salary.save');
@@ -50,11 +57,14 @@ Route::middleware(['auth'])->group(function () {
 
     // ── Payroll ───────────────────────────────────────────────────────────────
     Route::prefix('payroll')->name('payroll.')->group(function () {
+        Route::get('/employee-defaults/{id}', [PayrollController::class, 'employeeDefaults'])->name('employee-defaults');
         Route::get('/process', [PayrollController::class, 'processForm'])->name('process');
         Route::post('/calculate', [PayrollController::class, 'calculate'])->name('calculate');
         Route::post('/preview-breakdown', [PayrollController::class, 'previewBreakdown'])->name('preview.breakdown');
         Route::get('/bulk', [PayrollController::class, 'bulkForm'])->name('bulk');
         Route::post('/bulk', [PayrollController::class, 'bulkProcess'])->name('bulk.process');
+        Route::get('/custom-payment', [PayrollController::class, 'customPaymentForm'])->name('custom-payment');
+        Route::post('/custom-payment', [PayrollController::class, 'customPayment'])->name('custom-payment.store');
         Route::get('/history', [PayrollController::class, 'history'])->name('history');
         Route::post('/{record}/status', [PayrollController::class, 'updateStatus'])->name('status');
         Route::get('/{record}/slip', [PayrollController::class, 'salarySlip'])->name('slip');
@@ -62,6 +72,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/export/excel', [PayrollController::class, 'exportExcel'])->name('export.excel');
         Route::get('/wps', [PayrollController::class, 'wpsReport'])->name('wps');
         Route::get('/wps/export', [PayrollController::class, 'exportWPS'])->name('wps.export');
+        Route::get('/download-template', [PayrollController::class, 'downloadTemplate'])->name('download-template');
     });
 
     // ── Advances ──────────────────────────────────────────────────────────────
@@ -70,8 +81,6 @@ Route::middleware(['auth'])->group(function () {
     // ── Settings & Users (Admin only) ─────────────────────────────────────────
     Route::middleware(['can:admin'])->group(function () {
         Route::resource('users', UserController::class);
-        Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
-        Route::post('/settings', [SettingsController::class, 'update'])->name('settings.update');
-        Route::get('/activity-logs', [SettingsController::class, 'activityLogs'])->name('activity-logs');
+
     });
 });

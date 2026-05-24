@@ -58,8 +58,12 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
+        // Add 1 more admin + 1 more super_admin.
+        $this->call(AdditionalAdminUsersSeeder::class);
+
 
         // ── Departments & Designations ────────────────────────────────────────
+
         $departments = [
             'Engineering'    => ['Senior Engineer', 'Junior Engineer', 'Team Lead'],
             'Human Resources'=> ['HR Manager', 'HR Coordinator'],

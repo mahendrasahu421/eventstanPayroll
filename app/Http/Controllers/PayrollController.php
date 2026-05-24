@@ -3,230 +3,160 @@
 namespace App\Http\Controllers;
 
 use App\Models\Employee;
-use App\Models\PayrollRecord;
-use App\Models\ActivityLog;
-use App\Services\PayrollService;
+use App\Models\Payroll;
 use Illuminate\Http\Request;
-use Barryvdh\DomPDF\Facade\Pdf;
-use Maatwebsite\Excel\Facades\Excel;
-use App\Exports\PayrollExport;
-use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class PayrollController extends Controller
 {
-    public function __construct(private PayrollService $payrollService) {}
+    /**
+     * Fetch default deduction settings for an employee to pre-fill the form.
+     */
+    public function getEmployeeDefaults($id)
+    {
+        $employee = Employee::with(['department', 'designation'])->findOrFail($id);
 
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'food_deduction' => $employee->food_allowance_deduction ?? 0,
+                'visa_deduction' => $employee->visa_charge_deduction ?? 0,
+                'insurance_deduction' => $employee->insurance_deduction ?? 0,
+                'other_deduction' => 0,
+                'wps_first_transfer' => $employee->wps_limit ?? 0,
+                // In a production environment, you would calculate total outstanding 
+                // advances/loans for the selected month here.
+                'advance_deduction' => 0, 
+            ]
+        ]);
+    }
+
+    /**
+     * Generate a real-time preview of the payroll calculation for the UI.
+     */
     public function previewBreakdown(Request $request)
     {
-        $validated = $request->validate([
-            'employee_id'   => 'required|exists:employees,id',
-            'month'         => 'required|date_format:Y-m',
-            'working_days'  => 'nullable|integer|min:1|max:31',
-            'present_days'  => 'nullable|integer|min:0|max:31',
-            'leave_days'    => 'nullable|integer|min:0',
-            'overtime_hours'=> 'nullable|numeric|min:0',
-
-            'food_deduction'      => 'nullable|numeric|min:0',
-            'visa_deduction'      => 'nullable|numeric|min:0',
-            'insurance_deduction' => 'nullable|numeric|min:0',
-            'advance_deduction'   => 'nullable|numeric|min:0',
-            'other_deduction'     => 'nullable|numeric|min:0',
-
-            'wps_first_transfer'  => 'nullable|numeric|min:0',
-        ]);
-
-        $employee = Employee::with('salaryStructure')
-            ->findOrFail($validated['employee_id']);
-
-        $inputs = $validated;
-        unset($inputs['employee_id'], $inputs['month']);
-
-        $breakdown = $this->payrollService->calculateBreakdownPreview($employee, $validated['month'], $inputs);
-
-        return response()->json(['success' => true, 'data' => $breakdown]);
+        try {
+            $data = $this->calculatePayrollData($request->all());
+            return response()->json([
+                'success' => true,
+                'data' => $data
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Payroll Preview Error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Calculation failed: ' . $e->getMessage()
+            ], 422);
+        }
     }
 
-
-    // ── Process Single Payroll ─────────────────────────────────────────────
-
-    public function processForm(Request $request)
-    {
-        $month     = $request->get('month', now()->format('Y-m'));
-        $employees = Employee::active()->with('salaryStructure', 'department')->orderBy('first_name')->get();
-
-        return view('payroll.process', compact('employees', 'month'));
-    }
-
+    /**
+     * Calculate and store the final payroll record.
+     */
     public function calculate(Request $request)
     {
-        $validated = $request->validate([
-            'employee_id'   => 'required|exists:employees,id',
-            'month'         => 'required|date_format:Y-m',
-            'working_days'  => 'nullable|integer|min:1|max:31',
-            'present_days'  => 'nullable|integer|min:0|max:31',
-            'leave_days'    => 'nullable|integer|min:0',
-            'overtime_hours'=> 'nullable|numeric|min:0',
-
-            // Deductions (overrides)
-            'food_deduction'      => 'nullable|numeric|min:0',
-            'visa_deduction'      => 'nullable|numeric|min:0',
-            'insurance_deduction' => 'nullable|numeric|min:0',
-            'advance_deduction'   => 'nullable|numeric|min:0',
-            'other_deduction'     => 'nullable|numeric|min:0',
-
-            // WPS split
-            'wps_first_transfer'  => 'nullable|numeric|min:0',
-
-            // Save modes
-            'save_status' => 'required|in:draft,paid',
+        $request->validate([
+            'employee_id'  => 'required|exists:employees,id',
+            'month'        => 'required|date_format:Y-m',
+            'present_days' => 'required|numeric|min:0|max:31',
+            'save_status'  => 'required|in:draft,paid'
         ]);
 
-        $employee = Employee::with('salaryStructure')->findOrFail($validated['employee_id']);
+        DB::beginTransaction();
+        try {
+            $payrollData = $this->calculatePayrollData($request->all());
+            $payrollData['month'] = $request->month;
+            $payrollData['status'] = $request->save_status;
+            $payrollData['processed_at'] = now();
 
-        $validated['status'] = $validated['save_status'];
-        unset($validated['save_status']);
+            // Update existing record for the same month or create a new one
+            Payroll::updateOrCreate(
+                [
+                    'employee_id' => $request->employee_id,
+                    'month'       => $request->month,
+                ],
+                $payrollData
+            );
 
-        $record = $this->payrollService->processEmployee($employee, $validated['month'], $validated);
-
-        ActivityLog::record(
-            'payroll_processed',
-            "Payroll {$validated['status']} for {$employee->full_name} ({$validated['month']})",
-            $record
-        );
-
-        return redirect()->route('payroll.history')
-            ->with('success', "Payroll {$validated['status']} for {$employee->full_name}.");
-
-    }
-
-    // ── Bulk Payroll ───────────────────────────────────────────────────────
-
-    public function bulkForm()
-    {
-        return view('payroll.bulk');
-    }
-
-    public function bulkProcess(Request $request)
-    {
-        $request->validate(['month' => 'required|date_format:Y-m']);
-
-        $results = $this->payrollService->bulkProcess($request->month, $request->exclude_ids ?? []);
-
-        ActivityLog::record('bulk_payroll', "Bulk payroll processed for {$request->month}");
-
-        return redirect()->route('payroll.history')
-            ->with('bulk_results', $results)
-            ->with('success', count($results['success']) . ' employees processed successfully.');
-    }
-
-    // ── Payroll History ────────────────────────────────────────────────────
-
-    public function history(Request $request)
-    {
-        $query = PayrollRecord::with(['employee.department'])
-            ->when($request->month, fn($q) => $q->forMonth($request->month))
-            ->when($request->employee, fn($q) => $q->where('employee_id', $request->employee))
-            ->when($request->status, fn($q) => $q->where('status', $request->status))
-            ->when($request->department, fn($q) => $q->whereHas('employee', fn($e) =>
-                $e->where('department_id', $request->department)
-            ));
-
-        $records   = $query->orderBy('payroll_month', 'desc')->paginate(20)->withQueryString();
-        $employees = Employee::active()->orderBy('first_name')->get();
-
-        return view('payroll.history', compact('records', 'employees'));
-    }
-
-    // ── Status Management ──────────────────────────────────────────────────
-
-    public function updateStatus(Request $request, PayrollRecord $record)
-    {
-        $request->validate(['status' => 'required|in:draft,processed,approved,paid']);
-
-        $old = $record->status;
-        $updates = ['status' => $request->status];
-
-        if ($request->status === 'approved') {
-            $updates['approved_by'] = auth()->id();
-            $updates['approved_at'] = now();
+            DB::commit();
+            return redirect()->route('payroll.history')->with('success', 'Payroll processed and saved.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Payroll Processing Error: ' . $e->getMessage());
+            return back()->with('error', 'Calculation Error: ' . $e->getMessage())->withInput();
         }
-
-        $record->update($updates);
-        ActivityLog::record('status_changed', "Payroll status changed from {$old} to {$request->status}", $record);
-
-        return back()->with('success', 'Status updated.');
     }
 
-    // ── Salary Slip ────────────────────────────────────────────────────────
-
-    public function salarySlip(PayrollRecord $record)
+    /**
+     * Core business logic for payroll calculation.
+     */
+    private function calculatePayrollData(array $input)
     {
-        $record->load('employee.department', 'employee.designation');
-        $company = \App\Models\CompanySetting::first();
-        $pdf = Pdf::loadView('payroll.salary-slip', compact('record', 'company'));
-        return $pdf->download("salary-slip-{$record->employee->employee_code}-{$record->payroll_month}.pdf");
-    }
-
-    // ── Reports ────────────────────────────────────────────────────────────
-
-    public function reports(Request $request)
-    {
-        $month   = $request->get('month', now()->format('Y-m'));
-        $summary = $this->payrollService->getMonthlySummary($month);
-
-        $departmentReport = PayrollRecord::with('employee.department')
-            ->forMonth($month)
-            ->get()
-            ->groupBy(fn($r) => $r->employee?->department?->name ?? 'Unassigned')
-            ->map(fn($group) => [
-                'count'           => $group->count(),
-                'total_gross'     => $group->sum('gross_salary'),
-                'total_net'       => $group->sum('net_salary'),
-                'total_deductions'=> $group->sum('total_deductions'),
-            ]);
-
-        return view('payroll.reports', compact('summary', 'departmentReport', 'month'));
-    }
-
-    public function exportExcel(Request $request)
-    {
-        $month = $request->get('month', now()->format('Y-m'));
-        return Excel::download(new PayrollExport($month), "payroll-{$month}.xlsx");
-    }
-
-    // ── WPS Report ─────────────────────────────────────────────────────────
-
-    public function wpsReport(Request $request)
-    {
-        $month   = $request->get('month', now()->format('Y-m'));
-        $wpsData = $this->payrollService->generateWPSData($month);
-        return view('payroll.wps', compact('wpsData', 'month'));
-    }
-
-    public function exportWPS(Request $request)
-    {
-        $month   = $request->get('month', now()->format('Y-m'));
-        $wpsData = $this->payrollService->generateWPSData($month);
-
-        // Generate SIF-formatted WPS file
-        $content = $this->generateSIFContent($wpsData, $month);
-
-        return response($content, 200, [
-            'Content-Type'        => 'text/plain',
-            'Content-Disposition' => "attachment; filename=WPS_{$month}.sif",
-        ]);
-    }
-
-    private function generateSIFContent(array $wpsData, string $month): string
-    {
-        $lines = [];
-        $lines[] = "EH|{$month}|" . count($wpsData) . "|" . array_sum(array_column($wpsData, 'net_salary'));
-        foreach ($wpsData as $row) {
-            $lines[] = implode('|', [
-                'ED', $row['wps_personal_number'], $row['iban'],
-                number_format($row['net_salary'], 2, '.', ''),
-            ]);
+        $employee = Employee::findOrFail($input['employee_id']);
+        
+        // 1. Base Compensation
+        $basicSalary = (float) $employee->basic_salary;
+        $incrementAmount = (float) ($employee->increment_amount ?? 0);
+        $totalMonthly = $basicSalary + $incrementAmount;
+        
+        // 2. Pro-rated Salary calculation
+        $workingDays = (int) ($input['working_days'] ?? 30);
+        $presentDays = (float) ($input['present_days'] ?? 0);
+        $dailyRate = $workingDays > 0 ? ($totalMonthly / $workingDays) : 0;
+        $daysWorkedAmount = $dailyRate * $presentDays;
+        
+        // 3. Overtime calculation (Standard logic: 1.5x hourly rate)
+        // Formula: (Daily Rate / 8 hours) * 1.5
+        $overtimeHours = (float) ($input['overtime_hours'] ?? 0);
+        $overtimeRate = $dailyRate > 0 ? (($dailyRate / 8) * 1.5) : 0;
+        $overtimeAmount = $overtimeHours * $overtimeRate;
+        
+        $grossSalary = $daysWorkedAmount + $overtimeAmount;
+        
+        // 4. Deductions
+        $foodDeduction = (float) ($input['food_deduction'] ?? 0);
+        $visaDeduction = (float) ($input['visa_deduction'] ?? 0);
+        $insuranceDeduction = (float) ($input['insurance_deduction'] ?? 0);
+        $advanceDeduction = (float) ($input['advance_deduction'] ?: 0); 
+        $otherDeduction = (float) ($input['other_deduction'] ?? 0);
+        
+        $totalDeductions = $foodDeduction + $visaDeduction + $insuranceDeduction + $advanceDeduction + $otherDeduction;
+        $netSalary = $grossSalary - $totalDeductions;
+        
+        // 5. WPS Salary Splitting
+        $wpsFirstTransfer = (float) ($input['wps_first_transfer'] ?: ($employee->wps_limit ?? 0));
+        
+        // Safeguard: WPS transfer cannot exceed the total net payable amount
+        if ($wpsFirstTransfer > $netSalary) {
+            $wpsFirstTransfer = $netSalary;
         }
-        return implode("\r\n", $lines);
+        
+        $wpsSecondTransfer = max(0, $netSalary - $wpsFirstTransfer);
+
+        return [
+            'employee_id'         => $employee->id,
+            'basic_salary'        => $basicSalary,
+            'increment_amount'    => $incrementAmount,
+            'total_monthly'       => $totalMonthly,
+            'working_days'        => $workingDays,
+            'present_days'        => $presentDays,
+            'daily_rate'          => round($dailyRate, 2),
+            'days_worked_amount'  => round($daysWorkedAmount, 2),
+            'overtime_hours'      => $overtimeHours,
+            'overtime_rate'       => round($overtimeRate, 2),
+            'overtime_amount'     => round($overtimeAmount, 2),
+            'gross_salary'        => round($grossSalary, 2),
+            'food_deduction'      => $foodDeduction,
+            'visa_deduction'      => $visaDeduction,
+            'insurance_deduction' => $insuranceDeduction,
+            'advance_deduction'   => $advanceDeduction,
+            'other_deduction'     => $otherDeduction,
+            'total_deductions'    => round($totalDeductions, 2),
+            'net_salary'          => round($netSalary, 2),
+            'wps_first_transfer'  => round($wpsFirstTransfer, 2),
+            'wps_second_transfer' => round($wpsSecondTransfer, 2),
+        ];
     }
 }

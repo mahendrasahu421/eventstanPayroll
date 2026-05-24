@@ -14,6 +14,8 @@
     <!-- DataTables -->
     <link href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css" rel="stylesheet">
 
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+
     <style>
         :root {
             --sidebar-width: 260px;
@@ -52,6 +54,10 @@
             top: 0;
             z-index: 100;
             transition: transform .3s ease;
+
+            /* ← add these two lines */
+            height: 100vh;
+            overflow-y: auto;
         }
 
         #sidebar .brand {
@@ -197,57 +203,74 @@
                 margin-left: 0;
             }
         }
-    
 
-    /* Modern Form Styles */
-    .form-floating > label {
-    color: #6b7280;
-    font-weight: 500;
-    padding-left: 0.75rem;
-    }
-    .form-control, .form-select {
-    border-radius: var(--border-radius);
-    border: 2px solid #e5e7eb;
-    padding: 0.875rem 1rem;
-    font-size: 1rem;
-    transition: all 0.2s ease;
-    background: rgba(255,255,255,0.9);
-    }
-    .form-control:focus, .form-select:focus {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 0.25rem rgba(43,87,151,0.15);
-    background: #fff;
-    transform: translateY(-1px);
-    }
-    .btn-primary {
-    background: linear-gradient(135deg, var(--primary), var(--primary-light));
-    border: none;
-    border-radius: calc(var(--border-radius) / 1.5);
-    font-weight: 600;
-    padding: 0.75rem 1.5rem;
-    transition: all 0.2s ease;
-    box-shadow: var(--shadow-sm);
-    }
-    .btn-primary:hover {
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
-    }
-    .upload-zone {
-    border: 3px dashed #d1d5db;
-    border-radius: var(--border-radius);
-    padding: var(--spacing-lg);
-    text-align: center;
-    transition: all 0.2s ease;
-    background: rgba(255,255,255,0.7);
-    cursor: pointer;
-    }
-    .upload-zone.dragover {
-    border-color: var(--primary);
-    background: rgba(43,87,151,0.05);
-    }
-    h1, h2, h3 { font: var(--font-title); color: #1f2937; }
-    .page-content { padding: var(--spacing-lg); }
-</style>
+
+        /* Modern Form Styles */
+        .form-floating>label {
+            color: #6b7280;
+            font-weight: 500;
+            padding-left: 0.75rem;
+        }
+
+        .form-control,
+        .form-select {
+            border-radius: var(--border-radius);
+            border: 2px solid #e5e7eb;
+            padding: 0.875rem 1rem;
+            font-size: 1rem;
+            transition: all 0.2s ease;
+            background: rgba(255, 255, 255, 0.9);
+        }
+
+        .form-control:focus,
+        .form-select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 0.25rem rgba(43, 87, 151, 0.15);
+            background: #fff;
+            transform: translateY(-1px);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            border: none;
+            border-radius: calc(var(--border-radius) / 1.5);
+            font-weight: 600;
+            padding: 0.75rem 1.5rem;
+            transition: all 0.2s ease;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .upload-zone {
+            border: 3px dashed #d1d5db;
+            border-radius: var(--border-radius);
+            padding: var(--spacing-lg);
+            text-align: center;
+            transition: all 0.2s ease;
+            background: rgba(255, 255, 255, 0.7);
+            cursor: pointer;
+        }
+
+        .upload-zone.dragover {
+            border-color: var(--primary);
+            background: rgba(43, 87, 151, 0.05);
+        }
+
+        h1,
+        h2,
+        h3 {
+            font: var(--font-title);
+            color: #1f2937;
+        }
+
+        .page-content {
+            padding: var(--spacing-lg);
+        }
+    </style>
     @stack('styles')
 </head>
 
@@ -264,20 +287,19 @@
             <i class="bi bi-speedometer2"></i> Dashboard
         </a>
 
-        @if (auth()->user()->canManageEmployees())
+        {{-- Admin + Super Admin: show all menus --}}
+        @if (auth()->check() && auth()->user()->isAdmin())
             <div class="nav-section">Employees</div>
             <a href="{{ route('employees.index') }}" class="nav-link @active('employees*')">
                 <i class="bi bi-people"></i> All Employees
             </a>
-            <a href="{{ route('employees.create') }}" class="nav-link">
+            {{-- <a href="{{ route('employees.create') }}" class="nav-link">
                 <i class="bi bi-person-plus"></i> Add Employee
-            </a>
+            </a> --}}
             <a href="{{ route('employees.import.form') }}" class="nav-link">
                 <i class="bi bi-upload"></i> Bulk Import
             </a>
-        @endif
 
-        @if (auth()->user()->canProcessPayroll())
             <div class="nav-section">Payroll</div>
             <a href="{{ route('payroll.process') }}" class="nav-link">
                 <i class="bi bi-calculator"></i> Process Payroll
@@ -285,13 +307,14 @@
             <a href="{{ route('payroll.bulk') }}" class="nav-link">
                 <i class="bi bi-lightning"></i> Bulk Payroll
             </a>
-        @endif
+            <a href="{{ route('payroll.custom-payment') }}" class="nav-link @active('payroll/custom-payment*')">
+                <i class="bi bi-wallet2"></i> Custom Salary Payment
+            </a>
 
-        <a href="{{ route('payroll.history') }}" class="nav-link">
-            <i class="bi bi-clock-history"></i> Payroll History
-        </a>
+            <a href="{{ route('payroll.history') }}" class="nav-link">
+                <i class="bi bi-clock-history"></i> Payroll History
+            </a>
 
-        @if (auth()->user()->canViewReports())
             <div class="nav-section">Reports</div>
             <a href="{{ route('payroll.reports') }}" class="nav-link">
                 <i class="bi bi-bar-chart"></i> Payroll Reports
@@ -299,14 +322,17 @@
             <a href="{{ route('payroll.wps') }}" class="nav-link">
                 <i class="bi bi-bank"></i> WPS Report
             </a>
-        @endif
 
-        <div class="nav-section">Advances</div>
-        <a href="{{ route('advances.index') }}" class="nav-link">
-            <i class="bi bi-cash-coin"></i> Advance Payments
-        </a>
+            <div class="nav-section">Advances</div>
+            <a href="{{ route('advances.index') }}" class="nav-link">
+                <i class="bi bi-cash-coin"></i> Advance Payments
+            </a>
 
-        @if (auth()->user()->isAdmin())
+            <div class="nav-section">Documents</div>
+            <a href="{{ route('employee-documents') }}" class="nav-link @active('employee-documents')">
+                <i class="bi bi-file-earmark-text"></i> All Employee Documents
+            </a>
+
             <div class="nav-section">Administration</div>
             <a href="{{ route('users.index') }}" class="nav-link">
                 <i class="bi bi-shield-person"></i> Users
@@ -317,8 +343,75 @@
             <a href="{{ route('activity-logs') }}" class="nav-link">
                 <i class="bi bi-journal-text"></i> Activity Logs
             </a>
+        @else
+            @if (auth()->user()->canManageEmployees())
+                <div class="nav-section">Employees</div>
+                <a href="{{ route('employees.index') }}" class="nav-link @active('employees*')">
+                    <i class="bi bi-people"></i> All Employees
+                </a>
+                <a href="{{ route('employees.create') }}" class="nav-link">
+                    <i class="bi bi-person-plus"></i> Add Employee
+                </a>
+                <a href="{{ route('employees.import.form') }}" class="nav-link">
+                    <i class="bi bi-upload"></i> Bulk Import
+                </a>
+            @endif
+
+            @if (auth()->user()->canProcessPayroll())
+                <div class="nav-section">Payroll</div>
+                <a href="{{ route('payroll.process') }}" class="nav-link">
+                    <i class="bi bi-calculator"></i> Process Payroll
+                </a>
+                <a href="{{ route('payroll.bulk') }}" class="nav-link">
+                    <i class="bi bi-lightning"></i> Bulk Payroll
+                </a>
+                <a href="{{ route('payroll.custom-payment') }}" class="nav-link @active('payroll/custom-payment*')">
+                    <i class="bi bi-wallet2"></i> Custom Salary Payment
+                </a>
+            @endif
+
+            <a href="{{ route('payroll.history') }}" class="nav-link">
+                <i class="bi bi-clock-history"></i> Payroll History
+            </a>
+
+            @if (auth()->user()->canViewReports())
+                <div class="nav-section">Reports</div>
+                <a href="{{ route('payroll.reports') }}" class="nav-link">
+                    <i class="bi bi-bar-chart"></i> Payroll Reports
+                </a>
+                <a href="{{ route('payroll.wps') }}" class="nav-link">
+                    <i class="bi bi-bank"></i> WPS Report
+                </a>
+            @endif
+
+            <div class="nav-section">Advances</div>
+            <a href="{{ route('advances.index') }}" class="nav-link">
+                <i class="bi bi-cash-coin"></i> Advance Payments
+            </a>
+
+            <div class="nav-section">Documents</div>
+            @if (auth()->check() && auth()->user()->isAdmin())
+                <a href="{{ route('employee-documents') }}" class="nav-link @active('employee-documents')">
+                    <i class="bi bi-file-earmark-text"></i> All Employee Documents
+                </a>
+            @endif
+
+            @if (auth()->check() && auth()->user()->isAdmin())
+                <div class="nav-section">Administration</div>
+                <a href="{{ route('users.index') }}" class="nav-link">
+                    <i class="bi bi-shield-person"></i> Users
+                </a>
+                <a href="{{ route('settings') }}" class="nav-link">
+                    <i class="bi bi-gear"></i> Settings
+                </a>
+                <a href="{{ route('activity-logs') }}" class="nav-link">
+                    <i class="bi bi-journal-text"></i> Activity Logs
+                </a>
+            @endif
         @endif
     </nav>
+
+
 
     <!-- Main -->
     <div id="main">
@@ -344,37 +437,42 @@
             </div>
         </div>
 
-        <!-- Alerts -->
-        <div class="page-content pb-0">
-            @if (session('success'))
-                <div class="alert alert-success alert-dismissible fade show">
-                    <i class="bi bi-check-circle me-2"></i>{{ session('success') }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            @endif
-            @if (session('error'))
-                <div class="alert alert-danger alert-dismissible fade show">
-                    <i class="bi bi-exclamation-circle me-2"></i>{{ session('error') }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            @endif
-            @if ($errors->any())
-                <div class="alert alert-danger alert-dismissible fade show">
-                    <ul class="mb-0">
-                        @foreach ($errors->all() as $e)
-                            <li>{{ $e }}</li>
-                        @endforeach
-                    </ul>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            @endif
-        </div>
-
         <!-- Page Content -->
         <div class="page-content">
             @yield('content')
         </div>
     </div>
+
+    @php
+        $flashToasts = [];
+
+        if (session('success')) {
+            $flashToasts[] = [
+                'type' => 'success',
+                'title' => 'Success',
+                'message' => session('success'),
+            ];
+        }
+
+        if (session('error')) {
+            $flashToasts[] = [
+                'type' => 'error',
+                'title' => 'Error',
+                'message' => session('error'),
+            ];
+        }
+
+        foreach ($errors->all() as $error) {
+            $flashToasts[] = [
+                'type' => 'error',
+                'title' => 'Validation error',
+                'message' => $error,
+            ];
+        }
+    @endphp
+    <script>
+        window.__FLASH_TOASTS = @json($flashToasts);
+    </script>
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

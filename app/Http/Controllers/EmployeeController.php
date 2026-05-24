@@ -17,6 +17,74 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class EmployeeController extends Controller
 {
+    private function payrollCompanyName(): ?string
+    {
+        return CompanySetting::query()->value('company_name');
+    }
+
+    // Add this new method for AJAX data table
+    public function ajaxEmployees(Request $request)
+    {
+        $query = Employee::with(['department', 'designation', 'salaryStructure']);
+        
+        // Apply filters
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('first_name', 'like', "%{$search}%")
+                  ->orWhere('last_name', 'like', "%{$search}%")
+                  ->orWhere('employee_code', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhere('phone', 'like', "%{$search}%");
+            });
+        }
+        
+        if ($request->filled('department')) {
+            $query->where('department_id', $request->department);
+        }
+        
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+        
+        // Get paginated results
+        $perPage = $request->input('per_page', 25);
+        $employees = $query->orderBy('first_name')->paginate($perPage);
+        
+        // Transform data for DataTable
+        $data = $employees->map(function($employee) {
+            return [
+                'id' => $employee->id,
+                'employee_code' => $employee->employee_code,
+                'full_name' => $employee->full_name,
+                'first_name' => $employee->first_name,
+                'last_name' => $employee->last_name,
+                'email' => $employee->email,
+                'phone' => $employee->phone,
+                'photo' => $employee->photo,
+                'department_name' => $employee->department?->name ?? '-',
+                'designation_name' => $employee->designation?->name ?? '-',
+                'basic_salary' => $employee->salaryStructure?->basic_salary ?? 0,
+                'status' => $employee->status,
+                'joining_date' => $employee->joining_date,
+            ];
+        });
+        
+        // Generate pagination HTML
+        $pagination = $employees->links()->toHtml();
+        
+        return response()->json([
+            'data' => $data,
+            'current_page' => $employees->currentPage(),
+            'per_page' => $employees->perPage(),
+            'total' => $employees->total(),
+            'from' => $employees->firstItem(),
+            'to' => $employees->lastItem(),
+            'pagination' => $pagination,
+            'last_page' => $employees->lastPage(),
+        ]);
+    }
+    
     public function designationsByDepartment(Department $department)
     {
         $designations = $department->designations()
@@ -31,15 +99,8 @@ class EmployeeController extends Controller
 
     public function index(Request $request)
     {
-        $query = Employee::with(['department', 'designation'])
-            ->when($request->search, fn($q) => $q->search($request->search))
-            ->when($request->department, fn($q) => $q->where('department_id', $request->department))
-            ->when($request->status, fn($q) => $q->where('status', $request->status));
-
-        $employees = $query->orderBy('first_name')->paginate(20)->withQueryString();
         $departments = Department::where('is_active', true)->orderBy('name')->get();
-
-        return view('employees.index', compact('employees', 'departments'));
+        return view('employees.index', compact('departments'));
     }
 
     public function create()
@@ -52,13 +113,10 @@ class EmployeeController extends Controller
 
         $designations = Designation::where('is_active', true)->orderBy('name')->get();
         $countries = Country::query()->orderBy('name')->get();
+        $companyName = $this->payrollCompanyName();
 
-        // Company master (single company)
-        $company = CompanySetting::all();
-
-        return view('employees.create', compact('departments', 'designations', 'countries', 'company'));
+        return view('employees.create', compact('departments', 'designations', 'countries', 'companyName'));
     }
-
 
     public function store(EmployeeRequest $request)
     {
@@ -82,44 +140,57 @@ class EmployeeController extends Controller
             $employeeData['photo'] = $request->file('photo')->store('employees/photos', 'public');
         }
 
-        // Backward compatibility: also store legacy nationality text when country is chosen
         if (!empty($employeeData['country_id'])) {
             $employeeData['nationality'] = Country::query()->whereKey($employeeData['country_id'])->value('name') ?? $employeeData['nationality'];
         }
 
-        // Custom fields from form
         $customFields = $validated['custom_fields'] ?? [];
-
-        // If payroll_company is not provided by user, take it from Company master
         if (empty($customFields['payroll_company'])) {
             $companyName = CompanySetting::query()->value('company_name');
+            $companyName = $this->payrollCompanyName();
+
             if (!empty($companyName)) {
                 $customFields['payroll_company'] = $companyName;
             }
         }
 
-
         $employeeData['custom_fields'] = array_merge($customFields, $request->input('dynamic_custom_fields', []));
-
-
         $employee = Employee::create($employeeData);
+        
         ActivityLog::record('created', "Employee {$employee->full_name} created", $employee);
 
-        // Create Salary Structure
         $salaryData = [
             'employee_id' => $employee->id,
             'basic_salary' => $validated['basic_salary'] ?? 0,
             'overtime_rate_per_hour' => $validated['overtime_rate_per_hour'] ?? 0,
             'wps_first_transfer_amount' => $validated['wps_first_transfer_amount'] ?? 0,
             'food_deduction' => $validated['food_deduction'] ?? 0,
-            'visa_deduction' => $validated['visa_deduction'] ?? 0,
+            'visa_deduction' => 0,
             'insurance_deduction' => $validated['insurance_deduction'] ?? 0,
             'is_active' => true,
             'effective_from' => now(),
         ];
         $employee->salaryStructures()->create($salaryData);
 
-        // Handle Documents
+        $visaTotal = (float) ($validated['visa_deduction'] ?? 0);
+        $visaInstallments = (int) ($validated['visa_total_installments'] ?? 1);
+
+        if ($visaTotal > 0 && $visaInstallments > 1) {
+            $installmentAmount = round($visaTotal / $visaInstallments, 2);
+            $visaAdvance = $employee->advances()->create([
+                'amount' => $visaTotal,
+                'advance_date' => now()->toDateString(),
+                'reason' => 'Visa Charges (Installments)',
+                'installment_amount' => $installmentAmount,
+                'total_installments' => $visaInstallments,
+                'paid_installments' => 0,
+                'recovered_amount' => 0,
+                'pending_amount' => $visaTotal,
+                'status' => 'active',
+            ]);
+            ActivityLog::record('created', "Visa installments created for {$employee->full_name}", $visaAdvance);
+        }
+
         $docTypes = ['passport', 'emirates_id', 'labour_card', 'driving_license'];
         foreach ($docTypes as $type) {
             if (isset($validated['documents'][$type])) {
@@ -127,7 +198,7 @@ class EmployeeController extends Controller
                     'employee_id' => $employee->id,
                     'document_type' => $type,
                     'document_number' => $validated['documents'][$type]['number'] ?? null,
-                    'issue_date' => null, // Can be added later
+                    'issue_date' => null,
                 ];
 
                 if (isset($validated['documents'][$type]['expiry_date'])) {
@@ -148,8 +219,17 @@ class EmployeeController extends Controller
 
     public function show(Employee $employee)
     {
-        $employee->load(['department', 'designation', 'salaryStructure', 'documents', 'advances']);
-        return view('employees.show', compact('employee'));
+        $employee->load([
+            'department',
+            'designation',
+            'salaryStructure',
+            'documents',
+            'advances.recoveries.payrollRecord',
+        ]);
+
+        $companyName = $this->payrollCompanyName();
+
+        return view('employees.show', compact('employee', 'companyName'));
     }
 
     public function edit(Employee $employee)
@@ -162,9 +242,10 @@ class EmployeeController extends Controller
 
         $designations = Designation::where('is_active', true)->orderBy('name')->get();
         $countries = Country::query()->orderBy('name')->get();
-        return view('employees.edit', compact('employee', 'departments', 'designations', 'countries'));
-    }
+        $companyName = $this->payrollCompanyName();
 
+        return view('employees.edit', compact('employee', 'departments', 'designations', 'countries', 'companyName'));
+    }
 
     public function update(EmployeeRequest $request, Employee $employee)
     {
@@ -173,6 +254,11 @@ class EmployeeController extends Controller
 
         if (!empty($data['country_id'])) {
             $data['nationality'] = Country::query()->whereKey($data['country_id'])->value('name') ?? $data['nationality'];
+        }
+
+        $companyName = $this->payrollCompanyName();
+        if (empty($data['custom_fields']['payroll_company']) && !empty($companyName)) {
+            $data['custom_fields']['payroll_company'] = $companyName;
         }
 
         if ($request->hasFile('photo')) {
@@ -189,12 +275,22 @@ class EmployeeController extends Controller
 
     public function destroy(Employee $employee)
     {
-        $employee->delete();
-        ActivityLog::record('deleted', "Employee {$employee->full_name} deleted", $employee);
-        return redirect()->route('employees.index')->with('success', 'Employee deleted.');
+        try {
+            $employee->delete();
+            ActivityLog::record('deleted', "Employee {$employee->full_name} deleted", $employee);
+            
+            if (request()->ajax()) {
+                return response()->json(['success' => true, 'message' => 'Employee deleted successfully']);
+            }
+            
+            return redirect()->route('employees.index')->with('success', 'Employee deleted.');
+        } catch (\Exception $e) {
+            if (request()->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Error deleting employee'], 500);
+            }
+            return back()->with('error', 'Error deleting employee');
+        }
     }
-
-    // ── Salary Setup ──────────────────────────────────────────────────────────
 
     public function salarySetup(Employee $employee)
     {
@@ -218,17 +314,13 @@ class EmployeeController extends Controller
             'effective_from' => 'required|date',
         ]);
 
-        // Deactivate previous structure
         $employee->salaryStructures()->update(['is_active' => false, 'effective_to' => now()]);
-
         $employee->salaryStructures()->create($validated + ['is_active' => true]);
 
         ActivityLog::record('salary_updated', "Salary structure updated for {$employee->full_name}", $employee);
 
         return redirect()->route('employees.show', $employee)->with('success', 'Salary structure saved.');
     }
-
-    // ── Document Management ───────────────────────────────────────────────────
 
     public function uploadDocument(Request $request, Employee $employee)
     {
@@ -249,8 +341,6 @@ class EmployeeController extends Controller
 
         return back()->with('success', 'Document uploaded.');
     }
-
-    // ── Bulk Import ───────────────────────────────────────────────────────────
 
     public function showImport()
     {

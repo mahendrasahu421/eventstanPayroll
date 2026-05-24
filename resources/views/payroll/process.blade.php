@@ -3,447 +3,647 @@
 @section('title', 'Process Payroll')
 
 @section('content')
-    <div class="d-flex align-items-center gap-3 mb-4">
-        <i class="bi bi-calculator fs-2 text-primary"></i>
-        <h2>Process Single Employee Payroll</h2>
-    </div>
-
-    <div class="row g-4">
-        <div class="col-lg-7">
-            <form method="POST" action="{{ route('payroll.calculate') }}">
-                @csrf
-
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h5 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i>Payroll Inputs</h5>
-                    </div>
-
-                    <div class="card-body">
-                        <div class="row g-4">
-                            <div class="col-md-4">
-                                <label class="form-label">Month *</label>
-                                <input type="month" name="month"
-                                    class="form-control @error('month') is-invalid @enderror"
-                                    value="{{ old('month', $month ?? now()->format('Y-m')) }}" required>
-                                @error('month')
-                                    <div class="invalid-feedback d-block">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="col-md-6">
-                                <label class="form-label">Employee *</label>
-                                <select name="employee_id" class="form-select @error('employee_id') is-invalid @enderror"
-                                    required>
-                                    <option value="">Select Employee</option>
-                                    @foreach ($employees as $emp)
-                                        <option value="{{ $emp->id }}"
-                                            {{ old('employee_id') == $emp->id ? 'selected' : '' }}>
-                                            {{ $emp->full_name }} ({{ $emp->employee_code }})
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('employee_id')
-                                    <div class="invalid-feedback d-block">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="col-md-2">
-                                <label class="form-label">Save Status *</label>
-                                <select name="save_status" class="form-select @error('save_status') is-invalid @enderror"
-                                    required>
-                                    <option value="draft" {{ old('save_status') === 'draft' ? 'selected' : '' }}>Draft
-                                    </option>
-                                    <option value="paid" {{ old('save_status') === 'paid' ? 'selected' : '' }}>Paid
-                                    </option>
-                                </select>
-                                @error('save_status')
-                                    <div class="invalid-feedback d-block">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-
-                        <hr class="my-4" />
-
-                        <div class="row g-3 mb-2">
-                            <div class="col-md-12">
-                                <label class="form-label">Working Days</label>
-                                <input type="number" name="working_days" value="30" min="1" max="31" class="form-control" readonly>
-                            </div>
-
-                            <div class="col-md-12">
-                                <label class="form-label">Present Days *</label>
-                                <input type="number" name="present_days"
-                                    class="form-control @error('present_days') is-invalid @enderror"
-                                    value="{{ old('present_days') }}" min="0" max="31" required>
-                                @error('present_days')
-                                    <div class="invalid-feedback d-block">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-
-                            <div class="col-md-3">
-                                <label class="form-label">Leave Days</label>
-                                <input type="number" name="leave_days" class="form-control"
-                                    value="{{ old('leave_days', 0) }}" min="0">
-                            </div>
-
-                            <div class="col-md-3">
-                                <label class="form-label">Overtime Hours</label>
-                                <input type="number" name="overtime_hours" class="form-control"
-                                    value="{{ old('overtime_hours', 0) }}" step="0.5" min="0">
-                            </div>
-                        </div>
-
-                        <hr class="my-4" />
-
-                        <div class="row g-3 mb-2">
-                            <div class="col-md-3">
-                                <label class="form-label">Food Deduction</label>
-                                <input type="number" name="food_deduction"
-                                    class="form-control @error('food_deduction') is-invalid @enderror"
-                                    value="{{ old('food_deduction', 0) }}" step="0.01" min="0">
-                                @error('food_deduction')
-                                    <div class="invalid-feedback d-block">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="col-md-3">
-                                <label class="form-label">Visa Deduction</label>
-                                <input type="number" name="visa_deduction"
-                                    class="form-control @error('visa_deduction') is-invalid @enderror"
-                                    value="{{ old('visa_deduction', 0) }}" step="0.01" min="0">
-                                @error('visa_deduction')
-                                    <div class="invalid-feedback d-block">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="col-md-3">
-                                <label class="form-label">Insurance Deduction</label>
-                                <input type="number" name="insurance_deduction"
-                                    class="form-control @error('insurance_deduction') is-invalid @enderror"
-                                    value="{{ old('insurance_deduction', 0) }}" step="0.01" min="0">
-                                @error('insurance_deduction')
-                                    <div class="invalid-feedback d-block">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="col-md-3">
-                                <label class="form-label">Advance Deduction</label>
-                                <input type="number" name="advance_deduction"
-                                    class="form-control @error('advance_deduction') is-invalid @enderror"
-                                    value="{{ old('advance_deduction', '') }}" step="0.01" min="0"
-                                    placeholder="Leave blank for auto">
-                                @error('advance_deduction')
-                                    <div class="invalid-feedback d-block">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-
-                        <div class="row g-3 mb-4">
-                            <div class="col-md-6">
-                                <label class="form-label">Other Deduction</label>
-                                <input type="number" name="other_deduction"
-                                    class="form-control @error('other_deduction') is-invalid @enderror"
-                                    value="{{ old('other_deduction', 0) }}" step="0.01" min="0">
-                                @error('other_deduction')
-                                    <div class="invalid-feedback d-block">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="col-md-6">
-                                <label class="form-label">WPS First Transfer Amount</label>
-                                <input type="number" name="wps_first_transfer"
-                                    class="form-control @error('wps_first_transfer') is-invalid @enderror"
-                                    value="{{ old('wps_first_transfer', '') }}" step="0.01" min="0"
-                                    placeholder="Leave blank for default/auto">
-                                @error('wps_first_transfer')
-                                    <div class="invalid-feedback d-block">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-
-                        <div class="d-flex justify-content-end gap-2">
-                            <a href="{{ route('payroll.history') }}" class="btn btn-secondary">Cancel</a>
-                        </div>
-                    </div>
+    <div class="container-fluid px-4">
+        {{-- Header Section --}}
+        <div class="d-flex align-items-center justify-content-between mb-4">
+            <div class="d-flex align-items-center gap-3">
+                <div class="rounded-3 bg-primary bg-opacity-10 p-3">
+                    <i class="bi bi-calculator fs-2 text-primary"></i>
                 </div>
-            </form>
-
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-                    <h5 class="mb-0"><i class="bi bi-lightning me-2"></i>For bulk processing</h5>
-                    <a href="{{ route('payroll.bulk') }}" class="btn btn-sm btn-outline-primary">Bulk Payroll</a>
+                <div>
+                    <h1 class="display-6 fw-bold mb-0" style="font-size: 2rem;">Process Payroll</h1>
+                    <p class="text-muted mb-0">Calculate and manage employee salary</p>
                 </div>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{{ route('payroll.history') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-clock-history me-1"></i> Payroll History
+                </a>
             </div>
         </div>
 
-        <div class="col-lg-5">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="bi bi-diagram-3 me-2"></i>Salary Breakdown</h5>
-                </div>
-                <div class="card-body">
-                    <div class="mb-3 text-muted" id="breakdownHint">
-                        Employee select hote hi right side par live breakdown aa jayega (without save).
-                    </div>
+        <div class="row g-4">
+            {{-- Left Column - Form Inputs --}}
+            <div class="col-lg-7">
+                <form method="POST" action="{{ route('payroll.calculate') }}" id="payrollForm">
+                    @csrf
+                    <input type="hidden" name="save_status" id="saveStatusInput" value="draft">
 
-                    <div id="breakdownError" class="alert alert-danger d-none"></div>
+                    {{-- Payroll Inputs Card --}}
+                    <div class="card border-0 shadow-sm mb-4">
+                        <div class="card-header bg-transparent border-0 pt-3">
+                            <h5 class="mb-0 fw-bold"><i class="bi bi-sliders2 me-2 text-primary"></i>Payroll Inputs</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-4">
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Month <span class="text-danger">*</span></label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light"><i class="bi bi-calendar-month"></i></span>
+                                        <input type="month" name="month" id="monthInput"
+                                            class="form-control @error('month') is-invalid @enderror"
+                                            value="{{ old('month', $month ?? now()->format('Y-m')) }}" required>
+                                    </div>
+                                    @error('month')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
 
-                    <div id="breakdownResult" class="d-none">
-                        <div class="row g-3">
-                            <div class="col-12">
-                                <div class="p-2 border rounded">
-                                    <div class="text-muted" style="font-size: 12px">Basic Salary</div>
-                                    <div class="fs-5 fw-bold text-primary" id="basicSalary">0</div>
+                                <div class="col-md-8">
+                                    <label class="form-label fw-semibold">Employee <span
+                                            class="text-danger">*</span></label>
+                                    <select name="employee_id" id="employeeSelect"
+                                        class="form-select @error('employee_id') is-invalid @enderror" required>
+                                        <option value="">-- Select Employee --</option>
+                                        @foreach ($employees as $emp)
+                                            <option value="{{ $emp->id }}" data-code="{{ $emp->employee_code }}"
+                                                data-joining="{{ $emp->joining_date }}"
+                                                data-department="{{ $emp->department?->name }}"
+                                                data-designation="{{ $emp->designation?->name }}">
+                                                {{ $emp->full_name }} ({{ $emp->employee_code }})
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    @error('employee_id')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
                                 </div>
                             </div>
 
-                            <div class="col-12">
-                                <div class="row g-2">
-                                    <div class="col-6">Increment</div>
-                                    <div class="col-6 text-end" id="incrementAmount">0</div>
-                                    <div class="col-6">Total Monthly</div>
-                                    <div class="col-6 text-end" id="totalMonthly">0</div>
-                                </div>
-                            </div>
+                            <hr class="my-4" />
 
-                            <div class="col-12">
-                                <div class="row g-2">
-                                    <div class="col-6">Daily Rate</div>
-                                    <div class="col-6 text-end" id="dailyRate">0</div>
-                                    <div class="col-6">Days Worked</div>
-                                    <div class="col-6 text-end" id="daysWorked">0</div>
+                            {{-- Attendance Section --}}
+                            <h6 class="fw-bold mb-3"><i class="bi bi-calendar-check me-2 text-primary"></i>Attendance</h6>
+                            <div class="row g-4 mb-4">
+                                <div class="col-md-4">
+                                    <label class="form-label">Working Days</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light"><i class="bi bi-calendar"></i></span>
+                                        <input type="number" id="workingDaysInput" name="working_days" value="30"
+                                            min="1" max="31" class="form-control">
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div class="col-12">
-                                <div class="row g-2">
-                                    <div class="col-6">Overtime (h × rate)</div>
-                                    <div class="col-6 text-end" id="overtimeAmount">0</div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Present Days <span class="text-danger">*</span></label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light"><i class="bi bi-check-circle"></i></span>
+                                        <input type="number" id="presentDaysInput" name="present_days"
+                                            class="form-control @error('present_days') is-invalid @enderror"
+                                            value="{{ old('present_days', 30) }}" min="0" max="31" required>
+                                    </div>
+                                    @error('present_days')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
                                 </div>
-                            </div>
 
-                            <div class="col-12">
-                                <div class="p-2 border rounded">
-                                    <div class="text-muted" style="font-size: 12px">Gross Salary</div>
-                                    <div class="fs-5 fw-bold text-primary" id="grossSalary">0</div>
-                                </div>
-                            </div>
-
-                            <div class="col-12">
-                                <div class="mt-1">
-                                    <div class="text-muted mb-2" style="font-size: 12px">Deductions</div>
-                                    <div class="row g-2">
-                                        <div class="col-6">Total Deductions</div>
-                                        <div class="col-6 text-end" id="totalDeductions">0</div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Overtime Hours</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light"><i class="bi bi-clock-history"></i></span>
+                                        <input type="number" id="overtimeHoursInput" name="overtime_hours"
+                                            class="form-control" value="{{ old('overtime_hours', 0) }}" step="0.5"
+                                            min="0">
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="col-12">
-                                <div class="p-2 border rounded">
-                                    <div class="text-muted" style="font-size: 12px">Net Salary</div>
-                                    <div class="fs-5 fw-bold text-success" id="netSalary">0</div>
+                            <hr class="my-4" />
+
+                            {{-- Deductions Section --}}
+                            <h6 class="fw-bold mb-3"><i class="bi bi-receipt me-2 text-primary"></i>Deductions</h6>
+                            <div class="row g-4 mb-4">
+                                <div class="col-md-4">
+                                    <label class="form-label">Food/Mess</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light">AED</span>
+                                        <input type="number" id="foodDeductionInput" name="food_deduction"
+                                            class="form-control" value="{{ old('food_deduction', 0) }}" step="0.01"
+                                            min="0">
+                                    </div>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label">Visa</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light">AED</span>
+                                        <input type="number" id="visaDeductionInput" name="visa_deduction"
+                                            class="form-control" value="{{ old('visa_deduction', 0) }}" step="0.01"
+                                            min="0">
+                                    </div>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label">Insurance</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light">AED</span>
+                                        <input type="number" id="insuranceDeductionInput" name="insurance_deduction"
+                                            class="form-control" value="{{ old('insurance_deduction', 0) }}"
+                                            step="0.01" min="0">
+                                    </div>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label">Advance</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light">AED</span>
+                                        <input type="number" id="advanceDeductionInput" name="advance_deduction"
+                                            class="form-control" value="{{ old('advance_deduction', '') }}"
+                                            step="0.01" min="0" placeholder="Auto calculate">
+                                    </div>
+                                    <small class="text-muted" id="advanceHint">Leave empty for auto calculation</small>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label">Other Deductions</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light">AED</span>
+                                        <input type="number" id="otherDeductionInput" name="other_deduction"
+                                            class="form-control" value="{{ old('other_deduction', 0) }}" step="0.01"
+                                            min="0">
+                                    </div>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label">WPS First Transfer</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light">AED</span>
+                                        <input type="number" id="wpsFirstTransferInput" name="wps_first_transfer"
+                                            class="form-control" value="{{ old('wps_first_transfer', '') }}"
+                                            step="0.01" min="0" placeholder="Auto">
+                                    </div>
                                 </div>
                             </div>
 
-                            <div class="col-12">
-                                <div class="mt-2">
-                                    <div class="text-muted mb-2" style="font-size: 12px">WPS</div>
-                                    <div class="row g-2">
-                                        <div class="col-6">WPS First</div>
-                                        <div class="col-6 text-end" id="wpsFirstTransfer">0</div>
-                                        <div class="col-6">WPS Second</div>
-                                        <div class="col-6 text-end" id="wpsSecondTransfer">0</div>
-                                    </div>
+                            {{-- <div class="d-flex justify-content-end gap-2">
+                                <button type="button" class="btn btn-outline-secondary" id="resetBtn">
+                                    <i class="bi bi-arrow-repeat me-1"></i> Reset
+                                </button>
+                                <button type="submit" class="btn btn-primary" id="submitBtn">
+                                    <i class="bi bi-check-lg me-1"></i> Calculate & Save
+                                </button>s
+                            </div> --}}
+                        </div>
+                    </div>
+                </form>
+
+                {{-- Bulk Processing Card --}}
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="bi bi-grid-3x3-gap-fill fs-4 text-primary me-2"></i>
+                            <span class="fw-semibold">Process payroll for multiple employees</span>
+                        </div>
+                        <a href="{{ route('payroll.bulk') }}" class="btn btn-outline-primary">
+                            <i class="bi bi-people me-1"></i> Bulk Payroll
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Right Column - Salary Breakdown --}}
+            <div class="col-lg-5">
+                <div class="card border-0 shadow-sm sticky-top" style="top: 20px;">
+                    <div
+                        class="card-header bg-transparent border-0 pt-3 d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0 fw-bold">
+                            <i class="bi bi-pie-chart me-2 text-primary"></i>Salary Breakdown
+                        </h5>
+                        <div id="breakdownActions" class="d-none">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="saveDraftBtn">
+                                <i class="bi bi-save me-1"></i> Draft
+                            </button>
+                            <button type="button" class="btn btn-sm btn-primary" id="savePaidBtn">
+                                <i class="bi bi-check-circle me-1"></i> Paid
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card-body p-0">
+                        {{-- Employee Info Card --}}
+                        <div id="employeeInfoCard" class="d-none"
+                            style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px; border-radius: 8px; margin: 12px;">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div>
+                                    <h6 class="mb-0 fw-bold" id="empName">-</h6>
+                                    <small id="empCode">-</small>
+                                </div>
+                                <i class="bi bi-person-badge fs-3 opacity-50"></i>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col-6">
+                                    <small class="opacity-75">Department</small><br>
+                                    <small class="fw-semibold" id="empDept">-</small>
+                                </div>
+                                <div class="col-6">
+                                    <small class="opacity-75">Designation</small><br>
+                                    <small class="fw-semibold" id="empDesig">-</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Hint --}}
+                        <div id="breakdownHint" class="text-muted text-center py-5 px-3">
+                            <i class="bi bi-info-circle-fill fs-1 mb-3 d-block opacity-50"></i>
+                            Select an employee to view salary breakdown
+                        </div>
+
+                        {{-- Error --}}
+                        <div id="breakdownError" class="alert alert-danger m-3 d-none"></div>
+
+                        {{-- Loading --}}
+                        <div id="breakdownLoading" class="text-center text-muted py-5 d-none">
+                            <div class="spinner-border spinner-border-sm me-2 text-primary"></div>
+                            Calculating...
+                        </div>
+
+                        {{-- Result --}}
+                        <div id="breakdownResult" class="d-none">
+                            {{-- Basic / Increment / Total Monthly --}}
+                            <div style="padding: 15px; border-bottom: 1px solid #e9ecef;">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-muted">Basic Salary</span>
+                                    <span class="fw-semibold" id="basicSalary">AED 0</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-muted">Increment</span>
+                                    <span class="fw-semibold text-success" id="incrementAmount">AED 0</span>
+                                </div>
+                                <div class="d-flex justify-content-between pt-2 mt-1 border-top">
+                                    <span class="fw-bold">Total Monthly</span>
+                                    <span class="fw-bold text-primary" id="totalMonthly">AED 0</span>
+                                </div>
+                            </div>
+
+                            {{-- Daily Rate / Days Worked --}}
+                            <div style="padding: 12px 15px; border-bottom: 1px solid #e9ecef; background: #f8f9fa;">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-muted">Daily Rate</span>
+                                    <span id="dailyRate" class="text-muted">AED 0</span>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span>Days Worked (<span id="daysWorkedLabel">0/0</span>)</span>
+                                    <span class="fw-semibold" id="daysWorkedAmount">AED 0</span>
+                                </div>
+                            </div>
+
+                            {{-- Overtime --}}
+                            <div style="padding: 12px 15px; border-bottom: 1px solid #e9ecef;">
+                                <div class="d-flex justify-content-between">
+                                    <span class="text-muted">Overtime (<span id="overtimeLabel">0h</span> × <span
+                                            id="overtimeRate">0</span>)</span>
+                                    <span class="fw-semibold text-success" id="overtimeAmount">AED 0</span>
+                                </div>
+                            </div>
+
+                            {{-- Gross Salary --}}
+                            <div style="padding: 15px; background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="fw-bold fs-5">Gross Salary</span>
+                                    <span class="fw-bold fs-3 text-success" id="grossSalary">AED 0</span>
+                                </div>
+                            </div>
+
+                            {{-- Deductions --}}
+                            <div style="padding: 15px; border-bottom: 1px solid #e9ecef;">
+                                <h6 class="fw-bold mb-3" style="color: #dc3545;">Deductions</h6>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-muted">Mess/Food</span>
+                                    <span class="text-danger" id="foodDeductionDisplay">AED 0</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-muted">Visa</span>
+                                    <span class="text-danger" id="visaDeductionDisplay">AED 0</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-muted">Insurance</span>
+                                    <span class="text-danger" id="insuranceDeductionDisplay">AED 0</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-muted">Advance</span>
+                                    <span class="text-danger" id="advanceDeductionDisplay">AED 0</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-muted">Other</span>
+                                    <span class="text-danger" id="otherDeductionDisplay">AED 0</span>
+                                </div>
+                                <div class="d-flex justify-content-between pt-2 mt-1 border-top">
+                                    <span class="fw-bold">Total Deductions</span>
+                                    <span class="fw-bold text-danger" id="totalDeductions">AED 0</span>
+                                </div>
+                            </div>
+
+                            {{-- Net Salary --}}
+                            <div style="padding: 20px 15px; background: #f8f9fa;">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="fw-bold fs-4">Net Salary</span>
+                                    <span class="fw-bold fs-2" style="color: #2B5797;" id="netSalary">AED 0</span>
+                                </div>
+                            </div>
+
+                            {{-- Salary Split --}}
+                            <div style="margin: 15px; background: #e8f0fe; border-radius: 10px; padding: 12px;">
+                                <h6 class="fw-bold mb-2" style="color: #1e40af;">Salary Split</h6>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>1st Transfer (WPS)</span>
+                                    <span class="fw-bold" id="wpsFirstTransfer">AED 0</span>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span>2nd Transfer (Balance)</span>
+                                    <span class="fw-bold" style="color: #991b1b;" id="wpsSecondTransfer">AED 0</span>
                                 </div>
                             </div>
                         </div>
                     </div>
-
-
-                    <div id="breakdownLoading" class="alert alert-info d-none mt-3 mb-0" role="status">
-                        Calculating...
-                    </div>
-
                 </div>
             </div>
         </div>
     </div>
 
-    <script>
-        (function() {
-            const calcRoute = '{{ route('payroll.calculate') }}';
-            const previewUrl = '{{ route('payroll.preview.breakdown') }}';
+    @push('scripts')
+        <script>
+            $(document).ready(function() {
+                let previewRequestId = 0;
 
-            const form = document.querySelector(`form[action="${calcRoute}"]`) || document.querySelector('form');
-            if (!form) return;
+                // DOM Elements
+                const employeeSelect = $('#employeeSelect');
+                const monthInput = $('#monthInput');
+                const workingDaysInput = $('#workingDaysInput');
+                const presentDaysInput = $('#presentDaysInput');
+                const overtimeHoursInput = $('#overtimeHoursInput');
 
+                const foodDeductionInput = $('#foodDeductionInput');
+                const visaDeductionInput = $('#visaDeductionInput');
+                const insuranceDeductionInput = $('#insuranceDeductionInput');
+                const advanceDeductionInput = $('#advanceDeductionInput');
+                const otherDeductionInput = $('#otherDeductionInput');
+                const wpsFirstTransferInput = $('#wpsFirstTransferInput');
 
-            const employeeSelect = form.querySelector('select[name="employee_id"]');
-            const monthInput = form.querySelector('input[name="month"]');
+                const resultBox = $('#breakdownResult');
+                const errorBox = $('#breakdownError');
+                const loadingBox = $('#breakdownLoading');
+                const hintBox = $('#breakdownHint');
+                const employeeInfoCard = $('#employeeInfoCard');
+                const breakdownActions = $('#breakdownActions');
 
-            const workingDaysInput = form.querySelector('input[name="working_days"]');
-            const presentDaysInput = form.querySelector('input[name="present_days"]');
-            const leaveDaysInput = form.querySelector('input[name="leave_days"]');
-            const overtimeHoursInput = form.querySelector('input[name="overtime_hours"]');
-
-            const foodDeductionInput = form.querySelector('input[name="food_deduction"]');
-            const visaDeductionInput = form.querySelector('input[name="visa_deduction"]');
-            const insuranceDeductionInput = form.querySelector('input[name="insurance_deduction"]');
-            const advanceDeductionInput = form.querySelector('input[name="advance_deduction"]');
-            const otherDeductionInput = form.querySelector('input[name="other_deduction"]');
-
-            const wpsFirstTransferInput = form.querySelector('input[name="wps_first_transfer"]');
-
-            const resultBox = document.getElementById('breakdownResult');
-            const errorBox = document.getElementById('breakdownError');
-            const loadingBox = document.getElementById('breakdownLoading');
-
-            const setText = (id, value) => {
-                const el = document.getElementById(id);
-                if (el) el.textContent = value;
-            };
-
-            const fmt = (n) => {
-                const num = Number(n);
-                if (!isFinite(num)) return '0';
-                return new Intl.NumberFormat(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                }).format(num);
-            };
-
-            function getVal(input) {
-                if (!input) return null;
-                const v = input.value;
-                if (v === '' || v === null || typeof v === 'undefined') return null;
-                return v;
-            }
-
-            let lastRequestId = 0;
-
-            function safeNumber(v, fallback) {
-                const n = Number(v);
-                return isFinite(n) ? n : fallback;
-            }
-
-            async function fetchPreview() {
-                const employeeId = employeeSelect?.value;
-                const month = monthInput?.value;
-
-
-        const working_days = getVal(workingDaysInput);
-        const present_days = getVal(presentDaysInput);
-        const leave_days = getVal(leaveDaysInput);
-        const overtime_hours = getVal(overtimeHoursInput);
-
-        if (!employeeId || !month) {
-            resultBox?.classList.add('d-none');
-            errorBox?.classList.add('d-none');
-            return;
-        }
-
-        // Agar working/present empty hon to default/compute karna hai
-        // (Server preview me required fields na bhejkar bhi calculation ho jayegi)
-        const working_days_num = safeNumber(working_days, 26);
-        const present_days_num = safeNumber(present_days, working_days_num);
-        const leave_days_num = leave_days === null ? 0 : safeNumber(leave_days, 0);
-        const overtime_hours_num = overtime_hours === null ? 0 : safeNumber(overtime_hours, 0);
-
-
-
-                const payload = {
-                    employee_id: employeeId,
-                    month: month,
-                    working_days: 30,
-                    present_days: present_days,
-                    leave_days: leave_days,
-                    overtime_hours: overtime_hours,
-
-                    food_deduction: getVal(foodDeductionInput),
-                    visa_deduction: getVal(visaDeductionInput),
-                    insurance_deduction: getVal(insuranceDeductionInput),
-                    advance_deduction: getVal(advanceDeductionInput),
-                    other_deduction: getVal(otherDeductionInput),
-                    wps_first_transfer: getVal(wpsFirstTransferInput),
-                };
-
-                const requestId = ++lastRequestId;
-                loadingBox?.classList.remove('d-none');
-                errorBox?.classList.add('d-none');
-                resultBox?.classList.add('d-none');
-
-                try {
-                    const res = await fetch('{{ route('payroll.preview.breakdown') }}', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute(
-                                'content') || '',
-                            'Accept': 'application/json'
-                        },
-                        body: JSON.stringify(payload)
+                // Helper functions
+                function formatAED(amount) {
+                    const num = parseFloat(amount) || 0;
+                    return 'AED ' + num.toLocaleString('en-US', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
                     });
-
-                    const json = await res.json();
-                    if (!json || !json.success) throw new Error(json?.message || 'Preview failed');
-                    if (requestId !== lastRequestId) return;
-
-                    const d = json.data || {};
-
-                    setText('basicSalary', fmt(d.basic_salary));
-                    setText('incrementAmount', fmt(d.increment_amount));
-                    setText('totalMonthly', fmt(d.total_monthly));
-                    setText('dailyRate', fmt(d.daily_rate));
-
-                    const daysWorkedText = d.present_days !== undefined && d.working_days !== undefined
-                        ? `${d.present_days}/${d.working_days}`
-                        : '0';
-                    setText('daysWorked', daysWorkedText);
-
-                    setText('overtimeAmount', fmt(d.overtime_amount));
-                    setText('grossSalary', fmt(d.gross_salary));
-                    setText('totalDeductions', fmt(d.total_deductions));
-                    setText('netSalary', fmt(d.net_salary));
-
-                    setText('wpsFirstTransfer', fmt(d.wps_first_transfer));
-                    setText('wpsSecondTransfer', fmt(d.wps_second_transfer));
-
-                    resultBox?.classList.remove('d-none');
-                } catch (e) {
-                    if (requestId !== lastRequestId) return;
-                    errorBox.textContent = e?.message || 'Something went wrong';
-                    errorBox?.classList.remove('d-none');
-                } finally {
-                    if (requestId !== lastRequestId) return;
-                    loadingBox?.classList.add('d-none');
                 }
-            }
 
-            const inputsToWatch = [
-                employeeSelect,
-                monthInput,
-                workingDaysInput,
-                presentDaysInput,
-                leaveDaysInput,
-                overtimeHoursInput,
-                foodDeductionInput,
-                visaDeductionInput,
-                insuranceDeductionInput,
-                advanceDeductionInput,
-                otherDeductionInput,
-                wpsFirstTransferInput,
-            ].filter(Boolean);
+                function formatAEDNeg(amount) {
+                    const num = parseFloat(amount) || 0;
+                    return 'AED ' + num.toLocaleString('en-US', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                    });
+                }
 
-            inputsToWatch.forEach(el => {
-                el.addEventListener('change', fetchPreview);
-                el.addEventListener('input', fetchPreview);
+                function setText(id, value) {
+                    $(`#${id}`).text(value);
+                }
+
+                function getPayload(saveStatus = null) {
+                    return {
+                        employee_id: employeeSelect.val(),
+                        month: monthInput.val(),
+                        working_days: workingDaysInput.val() || 30,
+                        present_days: presentDaysInput.val() || 0,
+                        overtime_hours: overtimeHoursInput.val() || 0,
+                        food_deduction: foodDeductionInput.val() || 0,
+                        visa_deduction: visaDeductionInput.val() || 0,
+                        insurance_deduction: insuranceDeductionInput.val() || 0,
+                        advance_deduction: advanceDeductionInput.val() || '',
+                        other_deduction: otherDeductionInput.val() || 0,
+                        wps_first_transfer: wpsFirstTransferInput.val() || '',
+                        save_status: saveStatus
+                    };
+                }
+
+                // Debounce helper to prevent excessive API calls while typing
+                function debounce(func, wait) {
+                    let timeout;
+                    return function(...args) {
+                        clearTimeout(timeout);
+                        timeout = setTimeout(() => func.apply(this, args), wait);
+                    };
+                }
+
+                const debouncedFetchPreview = debounce(fetchPreview, 400);
+
+                // Load employee defaults when employee changes
+                async function loadEmployeeDefaults() {
+                    const employeeId = employeeSelect.val();
+                    if (!employeeId) return;
+
+                    try {
+                        const response = await fetch(
+                        `{{ route('payroll.employee-defaults', '') }}/${employeeId}`, {
+                            method: 'GET',
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                            }
+                        });
+
+                        const result = await response.json();
+                        if (result.success && result.data) {
+                            const data = result.data;
+                            console.log(data);
+                            // Set form values
+                            if (data.food_deduction !== undefined) foodDeductionInput.val(data.food_deduction);
+                            if (data.visa_deduction !== undefined) visaDeductionInput.val(data.visa_deduction);
+                            if (data.insurance_deduction !== undefined) insuranceDeductionInput.val(data
+                                .insurance_deduction);
+                            if (data.advance_deduction !== undefined && !advanceDeductionInput.val()) {
+                                advanceDeductionInput.val(data.advance_deduction);
+                                $('#advanceHint').html(`Auto calculated: AED ${data.advance_deduction}`);
+                            }
+                            if (data.other_deduction !== undefined) otherDeductionInput.val(data.other_deduction);
+                            if (data.wps_first_transfer !== undefined) wpsFirstTransferInput.val(data
+                                .wps_first_transfer);
+                            if (data.present_days !== undefined) presentDaysInput.val(data.present_days);
+                            if (data.overtime_hours !== undefined) overtimeHoursInput.val(data.overtime_hours);
+
+                            // Update employee info card
+                            const selectedOption = employeeSelect.find('option:selected');
+                            $('#empName').text(selectedOption.text().split(' (')[0]);
+                            $('#empCode').text(selectedOption.data('code') || '-');
+                            $('#empDept').text(selectedOption.data('department') || '-');
+                            $('#empDesig').text(selectedOption.data('designation') || '-');
+                            employeeInfoCard.removeClass('d-none');
+                        }
+                    } catch (error) {
+                        console.error('Error loading employee defaults:', error);
+                    }
+                }
+
+                // Fetch preview breakdown
+                async function fetchPreview() {
+                    const employeeId = employeeSelect.val();
+                    const month = monthInput.val();
+
+                    if (!employeeId || !month) {
+                        resultBox.addClass('d-none');
+                        hintBox.removeClass('d-none');
+                        breakdownActions.addClass('d-none');
+                        return;
+                    }
+
+                    const requestId = ++previewRequestId;
+
+                    hintBox.addClass('d-none');
+                    errorBox.addClass('d-none');
+                    resultBox.addClass('d-none');
+                    loadingBox.removeClass('d-none');
+                    breakdownActions.addClass('d-none');
+
+                    try {
+                        const response = await fetch('{{ route('payroll.preview.breakdown') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify(getPayload(null))
+                        });
+
+                        const result = await response.json();
+
+                        if (requestId !== previewRequestId) return;
+
+                        if (!result.success) {
+                            throw new Error(result.message || 'Failed to calculate breakdown');
+                        }
+
+                        const d = result.data;
+
+                        // Update breakdown display
+                        setText('basicSalary', formatAED(d.basic_salary));
+                        setText('incrementAmount', formatAED(d.increment_amount));
+                        setText('totalMonthly', formatAED(d.total_monthly));
+                        setText('dailyRate', formatAED(d.daily_rate));
+                        setText('daysWorkedLabel', `${d.present_days || 0}/${d.working_days || 30}`);
+                        setText('daysWorkedAmount', formatAED(d.days_worked_amount));
+                        setText('overtimeLabel', d.overtime_hours || 0);
+                        setText('overtimeRate', d.overtime_rate || 0);
+                        setText('overtimeAmount', formatAED(d.overtime_amount));
+                        setText('grossSalary', formatAED(d.gross_salary));
+                        setText('foodDeductionDisplay', formatAEDNeg(d.food_deduction));
+                        setText('visaDeductionDisplay', formatAEDNeg(d.visa_deduction));
+                        setText('insuranceDeductionDisplay', formatAEDNeg(d.insurance_deduction));
+                        setText('advanceDeductionDisplay', formatAEDNeg(d.advance_deduction));
+                        setText('otherDeductionDisplay', formatAEDNeg(d.other_deduction));
+                        setText('totalDeductions', formatAEDNeg(d.total_deductions));
+                        setText('netSalary', formatAED(d.net_salary));
+                        setText('wpsFirstTransfer', formatAED(d.wps_first_transfer));
+                        setText('wpsSecondTransfer', formatAEDNeg(d.wps_second_transfer));
+
+                        resultBox.removeClass('d-none');
+                        breakdownActions.removeClass('d-none');
+
+                    } catch (error) {
+                        if (requestId !== previewRequestId) return;
+                        errorBox.text(error.message || 'Something went wrong').removeClass('d-none');
+                    } finally {
+                        if (requestId !== previewRequestId) return;
+                        loadingBox.addClass('d-none');
+                    }
+                }
+
+                // Submit form with status
+                function submitForm(status) {
+                    if (!employeeSelect.val() || !monthInput.val()) {
+                        alert('Please select employee and month');
+                        return;
+                    }
+
+                    $('#saveStatusInput').val(status);
+                    $('#payrollForm').submit();
+                }
+
+                // Reset form
+                function resetForm() {
+                    employeeSelect.val('').trigger('change');
+                    presentDaysInput.val(30);
+                    overtimeHoursInput.val(0);
+                    foodDeductionInput.val(0);
+                    visaDeductionInput.val(0);
+                    insuranceDeductionInput.val(0);
+                    advanceDeductionInput.val('');
+                    otherDeductionInput.val(0);
+                    wpsFirstTransferInput.val('');
+
+                    resultBox.addClass('d-none');
+                    hintBox.removeClass('d-none');
+                    employeeInfoCard.addClass('d-none');
+                    breakdownActions.addClass('d-none');
+                }
+
+                // Event Listeners
+                employeeSelect.on('change', function() {
+                    if ($(this).val()) {
+                        loadEmployeeDefaults().then(() => {
+                            fetchPreview();
+                        });
+                    } else {
+                        resetForm();
+                    }
+                });
+
+                monthInput.on('change', fetchPreview);
+                presentDaysInput.on('input', debouncedFetchPreview);
+                overtimeHoursInput.on('input', debouncedFetchPreview);
+                foodDeductionInput.on('input', debouncedFetchPreview);
+                visaDeductionInput.on('input', debouncedFetchPreview);
+                insuranceDeductionInput.on('input', debouncedFetchPreview);
+                advanceDeductionInput.on('input', debouncedFetchPreview);
+                otherDeductionInput.on('input', debouncedFetchPreview);
+                wpsFirstTransferInput.on('input', debouncedFetchPreview);
+
+                // Auto-calculate working days based on month
+                monthInput.on('change', function() {
+                    const monthValue = $(this).val();
+                    if (monthValue) {
+                        const year = parseInt(monthValue.split('-')[0]);
+                        const month = parseInt(monthValue.split('-')[1]);
+                        const daysInMonth = new Date(year, month, 0).getDate();
+                        workingDaysInput.val(daysInMonth);
+
+                        if (presentDaysInput.val() > daysInMonth) {
+                            presentDaysInput.val(daysInMonth);
+                        }
+                        fetchPreview();
+                    }
+                });
+
+                $('#resetBtn').on('click', resetForm);
+                $('#saveDraftBtn').on('click', () => submitForm('draft'));
+                $('#savePaidBtn').on('click', () => submitForm('paid'));
+
+                // Trigger month change to set working days
+                if (monthInput.val()) {
+                    monthInput.trigger('change');
+                }
+
+                // Initial check if employee is pre-selected
+                if (employeeSelect.val()) {
+                    loadEmployeeDefaults().then(() => fetchPreview());
+                }
             });
+        </script>
+    @endpush
 
-            // Initial load if old values exist
-            if (employeeSelect?.value && monthInput?.value) fetchPreview();
-        })();
-    </script>
-
+    <style>
+        .sticky-top {
+            position: sticky;
+            top: 20px;
+            z-index: 100;
+        }
+    </style>
 @endsection

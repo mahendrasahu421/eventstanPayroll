@@ -3,242 +3,559 @@
 @section('title', $employee->full_name)
 
 @section('content')
-<div class="row">
-    <div class="col-md-4 mb-4">
-        <div class="card text-center border-0 shadow-sm">
-            <div class="card-body py-4">
-                @if($employee->photo)
-                    <img src="{{ Storage::url($employee->photo) }}" class="rounded-circle mx-auto d-block mb-3 border border-4 border-white shadow-lg" style="width:120px;height:120px;object-fit:cover;">
-                @else
-                    <div class="rounded-circle mx-auto mb-3 bg-primary d-flex align-items-center justify-content-center text-white shadow-lg" style="width:120px;height:120px;font-size:2rem;font-weight:bold">
-                        {{ substr($employee->first_name,0,1).strtoupper(substr($employee->last_name,0,1)) }}
-                    </div>
-                @endif
-                <h4 class="mb-1">{{ $employee->full_name }}</h4>
-                <p class="text-muted mb-1">{{ $employee->employee_code }}</p>
-                @if($employee->status === 'active')
-                    <span class="badge badge-active fs-6 px-3 py-2"><i class="bi bi-check-circle me-1"></i>Active</span>
-                @else
-                    <span class="badge badge-inactive fs-6 px-3 py-2"><i class="bi bi-x-circle me-1"></i>Inactive</span>
-                @endif
+<div class="container-fluid px-4">
+    {{-- Header Section --}}
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div class="d-flex align-items-center gap-3">
+            <div class="rounded-3 bg-primary bg-opacity-10 p-3">
+                <i class="bi bi-person-circle fs-2 text-primary"></i>
             </div>
-        </div>
-    </div>
-
-    <div class="col-md-8 mb-4">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h3 class="h5 mb-0">Profile Information</h3>
             <div>
-                <a href="{{ route('employees.edit', $employee) }}" class="btn btn-sm btn-outline-primary me-2"><i class="bi bi-pencil"></i> Edit</a>
+                <h1 class="display-6 fw-bold mb-0" style="font-size: 2rem;">{{ $employee->full_name }}</h1>
+                <p class="text-muted mb-0">{{ $employee->employee_code }}</p>
             </div>
         </div>
-        <div class="row g-4">
-            <div class="col-md-6">
-                <strong>Department:</strong> <span class="ms-2">{{ $employee->department?->name ?? '-' }}</span><br>
-                <strong>Designation:</strong> <span class="ms-2">{{ $employee->designation?->name ?? '-' }}</span><br>
-                <strong>Email:</strong> {{ $employee->email ?? 'N/A' }}<br>
-                <strong>Phone:</strong> {{ $employee->phone ?? 'N/A' }}<br>
-                <strong>WPS Number:</strong> {{ $employee->wps_personal_number ?? 'N/A' }}<br>
-                <strong>Nationality:</strong> {{ $employee->country?->name ?? ucfirst($employee->nationality ?? 'N/A') }}
-                <br/>
-
-            </div>
-            <div class="col-md-6">
-                <strong>Joining Date:</strong> {{ $employee->joining_date?->format('d M Y') ?? 'N/A' }}<br>
-                @if($employee->custom_fields['payroll_company'] ?? false)
-                    <strong>Payroll Company:</strong> {{ $employee->custom_fields['payroll_company'] }}<br>
-                @endif
-                @if($employee->custom_fields['insurance_provider'] ?? false)
-                    <strong>Insurance Provider:</strong> {{ $employee->custom_fields['insurance_provider'] }}<br>
-                    <strong>Policy #:</strong> {{ $employee->custom_fields['insurance_policy_number'] ?? 'N/A' }}
-                @endif
-            </div>
+        <div class="d-flex gap-2">
+            <a href="{{ route('payroll.process') }}?employee_id={{ $employee->id }}" class="btn btn-primary">
+                <i class="bi bi-calculator me-1"></i> Process Payroll
+            </a>
+            <a href="{{ route('employees.edit', $employee) }}" class="btn btn-outline-primary">
+                <i class="bi bi-pencil me-1"></i> Edit Profile
+            </a>
         </div>
     </div>
-</div>
 
-{{-- Salary Structure Card --}}
-<div class="row mb-4">
-    <div class="col-12">
-        <h5 class="mb-3"><i class="bi bi-currency-dollar me-2"></i>Salary & Compensation</h5>
-        @if($employee->salaryStructure)
-            <div class="card">
-                <div class="card-body">
-                    <div class="row text-center text-md-start">
-                        <div class="col-md-3 mb-3"><strong>Basic Salary</strong><br>{{ number_format($employee->salaryStructure->basic_salary) }}</div>
-                        <div class="col-md-2 mb-3"><strong>Overtime Rate</strong><br>{{ number_format($employee->salaryStructure->overtime_rate_per_hour) }}/hr</div>
-                        <div class="col-md-3 mb-3"><strong>WPS 1st Transfer</strong><br>{{ number_format($employee->salaryStructure->wps_first_transfer_amount) }}</div>
-                        <div class="col-md-2 mb-3"><strong>Gross Salary</strong><br><span class="fs-5 fw-bold text-primary">{{ number_format($employee->salaryStructure->gross_salary) }}</span></div>
-                    </div>
-                    <div class="row mt-3">
-                        <div class="col-md-8">
-                            <h6 class="mb-2">Deductions</h6>
-                            <div class="row">
-                                <div class="col-md-3"><strong>Mess/Food:</strong> {{ number_format($employee->salaryStructure->food_deduction) }}</div>
-                                <div class="col-md-3"><strong>Visa:</strong> {{ number_format($employee->salaryStructure->visa_deduction) }}</div>
-                                <div class="col-md-3"><strong>Insurance:</strong> {{ number_format($employee->salaryStructure->insurance_deduction) }}</div>
-                                <div class="col-md-3"><strong>Net Salary:</strong> <span class="fw-bold text-success">{{ number_format($employee->salaryStructure->gross_salary - ($employee->salaryStructure->food_deduction + $employee->salaryStructure->visa_deduction + $employee->salaryStructure->insurance_deduction)) }}</span></div>
-                            </div>
+    <div class="row g-4">
+        {{-- Left Column - Profile & Quick Actions --}}
+        <div class="col-lg-4">
+            {{-- Profile Card --}}
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-body text-center p-4">
+                    @if($employee->photo)
+                        <img src="{{ Storage::url($employee->photo) }}" 
+                             class="rounded-circle mx-auto d-block mb-3 border border-4 border-white shadow-lg" 
+                             style="width: 140px; height: 140px; object-fit: cover;">
+                    @else
+                        <div class="rounded-circle mx-auto mb-3 bg-gradient-primary d-flex align-items-center justify-content-center text-white shadow-lg" 
+                             style="width: 140px; height: 140px; font-size: 3rem; font-weight: bold; background: linear-gradient(135deg, #2B5797 0%, #1E3A6F 100%);">
+                            {{ strtoupper(substr($employee->first_name, 0, 1)) }}{{ strtoupper(substr($employee->last_name, 0, 1)) }}
                         </div>
-                        <div class="col-md-4 text-end">
-                            <a href="{{ route('employees.salary', $employee) }}" class="btn btn-sm btn-outline-primary">Edit Salary</a>
+                    @endif
+                    
+                    <h3 class="mb-1">{{ $employee->full_name }}</h3>
+                    <p class="text-muted mb-2">{{ $employee->employee_code }}</p>
+                    
+                    @if($employee->status === 'active')
+                        <span class="badge bg-success px-3 py-2 rounded-pill">
+                            <i class="bi bi-check-circle me-1"></i> Active
+                        </span>
+                    @else
+                        <span class="badge bg-secondary px-3 py-2 rounded-pill">
+                            <i class="bi bi-x-circle me-1"></i> Inactive
+                        </span>
+                    @endif
+                </div>
+            </div>
+
+            {{-- Quick Actions Card --}}
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-0 pt-3">
+                    <h6 class="mb-0 fw-bold"><i class="bi bi-lightning-charge me-2 text-primary"></i>Quick Actions</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ route('payroll.process') }}?employee_id={{ $employee->id }}" class="btn btn-primary">
+                            <i class="bi bi-calculator me-2"></i>Process Payroll
+                        </a>
+                        <a href="{{ route('payroll.history') }}?employee={{ $employee->id }}" class="btn btn-outline-primary">
+                            <i class="bi bi-clock-history me-2"></i>View Payroll History
+                        </a>
+                        <a href="{{ route('advances.create') }}?employee_id={{ $employee->id }}" class="btn btn-outline-success">
+                            <i class="bi bi-cash-stack me-2"></i>Create Advance
+                        </a>
+                        <a href="{{ route('employees.edit', $employee) }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-pencil-square me-2"></i>Edit Profile
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Contact Information Card --}}
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-0 pt-3">
+                    <h6 class="mb-0 fw-bold"><i class="bi bi-envelope-paper me-2 text-primary"></i>Contact Information</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="text-muted small mb-1">Email Address</label>
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-envelope me-2 text-primary"></i>
+                            <span>{{ $employee->email ?? 'N/A' }}</span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="text-muted small mb-1">Phone Number</label>
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-telephone me-2 text-primary"></i>
+                            <span>{{ $employee->phone ?? 'N/A' }}</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-muted small mb-1">Nationality</label>
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-flag me-2 text-primary"></i>
+                            <span>{{ $employee->country?->name ?? ucfirst($employee->nationality ?? 'N/A') }}</span>
                         </div>
                     </div>
                 </div>
             </div>
-        @else
-            <div class="alert alert-warning">
-                No salary structure defined. <a href="{{ route('employees.salary', $employee) }}">Set up now</a>.
+        </div>
+
+        {{-- Right Column - Main Content --}}
+        <div class="col-lg-8">
+            {{-- Employment Information Card --}}
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-0 pt-3">
+                    <h5 class="mb-0 fw-bold"><i class="bi bi-briefcase me-2 text-primary"></i>Employment Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <div class="border rounded-3 p-3 h-100">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-muted">Department</span>
+                                    <span class="fw-semibold">{{ $employee->department?->name ?? '-' }}</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-muted">Designation</span>
+                                    <span class="fw-semibold">{{ $employee->designation?->name ?? '-' }}</span>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span class="text-muted">Joining Date</span>
+                                    <span class="fw-semibold">{{ $employee->joining_date?->format('d M Y') ?? 'N/A' }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="border rounded-3 p-3 h-100">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-muted">WPS Number</span>
+                                    <span class="fw-semibold">{{ $employee->wps_personal_number ?? 'N/A' }}</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-muted">Payroll Company</span>
+                                    <span class="fw-semibold">{{ $employee->custom_fields['payroll_company'] ?? $companyName ?? 'Not configured' }}</span>
+                                </div>
+                                @if($employee->custom_fields['insurance_provider'] ?? false)
+                                <div class="d-flex justify-content-between">
+                                    <span class="text-muted">Insurance</span>
+                                    <span class="fw-semibold">{{ $employee->custom_fields['insurance_provider'] }}</span>
+                                </div>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-        @endif
-    </div>
-</div>
 
-{{-- Tabs for related data --}}
-<div class="row">
-    <div class="col-md-8">
-        <ul class="nav nav-tabs mb-3" id="employeeTabs" role="tablist">
-            <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="documents-tab" data-bs-toggle="tab" data-bs-target="#documents" type="button">
-                    Documents ({{ $employee->documents->count() }})
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="advances-tab" data-bs-toggle="tab" data-bs-target="#advances" type="button">
-                    Advances ({{ $employee->advances->count() }})
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="custom-tab" data-bs-toggle="tab" data-bs-target="#custom" type="button">
-                    Custom Fields ({{ count($employee->custom_fields ?? []) }})
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="payrolls-tab" data-bs-toggle="tab" data-bs-target="#payrolls" type="button">
-                    Payroll Records
-                </button>
-            </li>
-        </ul>
+            {{-- Salary & Compensation Card --}}
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-0 pt-3 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fw-bold"><i class="bi bi-currency-dollar me-2 text-primary"></i>Salary & Compensation</h5>
+                    <a href="{{ route('employees.salary', $employee) }}" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-pencil me-1"></i> Edit Salary
+                    </a>
+                </div>
+                <div class="card-body">
+                    @php
+                        $salary = $employee->salaryStructure;
+                        $gross = $salary?->gross_salary ?? 0;
+                        $food = (float) ($salary->food_deduction ?? 0);
+                        $visa = (float) ($salary->visa_deduction ?? 0);
+                        $insurance = (float) ($salary->insurance_deduction ?? 0);
+                        $otherDeduction = (float) ($salary->other_deduction ?? 0);
+                        $net = $gross - ($food + $visa + $insurance + $otherDeduction);
+                    @endphp
 
-        <div class="tab-content" id="employeeTabContent">
-{{-- Documents --}}
-            <div class="tab-pane fade show active" id="documents" role="tabpanel">
-                @if($employee->documents->count())
+                    @if($salary)
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <div class="bg-light rounded-3 p-3">
+                                    <h6 class="fw-bold mb-3">Earnings</h6>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span class="text-muted">Basic Salary</span>
+                                        <span class="fw-semibold">{{ number_format($salary->basic_salary ?? 0) }} AED</span>
+                                    </div>
+                                    @if(($salary->housing_allowance ?? 0) > 0)
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span class="text-muted">Housing Allowance</span>
+                                        <span>{{ number_format($salary->housing_allowance) }} AED</span>
+                                    </div>
+                                    @endif
+                                    @if(($salary->transport_allowance ?? 0) > 0)
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span class="text-muted">Transport Allowance</span>
+                                        <span>{{ number_format($salary->transport_allowance) }} AED</span>
+                                    </div>
+                                    @endif
+                                    @if(($salary->medical_allowance ?? 0) > 0)
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span class="text-muted">Medical Allowance</span>
+                                        <span>{{ number_format($salary->medical_allowance) }} AED</span>
+                                    </div>
+                                    @endif
+                                    <hr class="my-2">
+                                    <div class="d-flex justify-content-between">
+                                        <span class="fw-bold">Gross Salary</span>
+                                        <span class="fw-bold text-primary fs-5">{{ number_format($gross) }} AED</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="bg-light rounded-3 p-3">
+                                    <h6 class="fw-bold mb-3">Deductions</h6>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span class="text-muted">Mess/Food</span>
+                                        <span class="text-danger">{{ number_format($food) }} AED</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span class="text-muted">Visa Charges</span>
+                                        <span class="text-danger">{{ number_format($visa) }} AED</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span class="text-muted">Insurance</span>
+                                        <span class="text-danger">{{ number_format($insurance) }} AED</span>
+                                    </div>
+                                    @if($otherDeduction > 0)
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span class="text-muted">Other Deductions</span>
+                                        <span class="text-danger">{{ number_format($otherDeduction) }} AED</span>
+                                    </div>
+                                    @endif
+                                    <hr class="my-2">
+                                    <div class="d-flex justify-content-between">
+                                        <span class="fw-bold">Net Salary</span>
+                                        <span class="fw-bold text-success fs-5">{{ number_format($net) }} AED</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            @if(($salary->overtime_rate_per_hour ?? 0) > 0 || ($salary->wps_first_transfer_amount ?? 0) > 0)
+                            <div class="col-12">
+                                <div class="border rounded-3 p-3">
+                                    <div class="row">
+                                        @if(($salary->overtime_rate_per_hour ?? 0) > 0)
+                                        <div class="col-md-6">
+                                            <i class="bi bi-clock-history me-2 text-primary"></i>
+                                            <strong>Overtime Rate:</strong> {{ number_format($salary->overtime_rate_per_hour) }} AED/hour
+                                        </div>
+                                        @endif
+                                        @if(($salary->wps_first_transfer_amount ?? 0) > 0)
+                                        <div class="col-md-6">
+                                            <i class="bi bi-bank me-2 text-primary"></i>
+                                            <strong>WPS First Transfer:</strong> {{ number_format($salary->wps_first_transfer_amount) }} AED
+                                        </div>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                            @endif
+                        </div>
+                    @else
+                        <div class="alert alert-warning mb-0">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            No salary structure defined. <a href="{{ route('employees.salary', $employee) }}">Set up now</a>.
+                        </div>
+                    @endif
+                </div>
+            </div>
+
+            {{-- Advances Summary Card --}}
+            @if($employee->advances->count() > 0)
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-0 pt-3">
+                    <h5 class="mb-0 fw-bold"><i class="bi bi-cash-stack me-2 text-primary"></i>Advances & Recoveries</h5>
+                </div>
+                <div class="card-body">
+                    @php
+                        $activeAdvances = $employee->advances->where('status', 'active');
+                        $advTotal = $activeAdvances->sum('amount');
+                        $advPending = $activeAdvances->sum('pending_amount');
+                        $totalRecovered = $advTotal - $advPending;
+                    @endphp
+                    
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <div class="border rounded-3 p-3 text-center">
+                                <small class="text-muted">Total Advances</small>
+                                <h4 class="mb-0 text-primary">{{ number_format($advTotal) }} AED</h4>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="border rounded-3 p-3 text-center">
+                                <small class="text-muted">Recovered Amount</small>
+                                <h4 class="mb-0 text-success">{{ number_format($totalRecovered) }} AED</h4>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="border rounded-3 p-3 text-center">
+                                <small class="text-muted">Pending Amount</small>
+                                <h4 class="mb-0 text-warning">{{ number_format($advPending) }} AED</h4>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="table-responsive">
-                        <table class="table table-sm">
-                            <thead><tr><th>Type</th><th>Number</th><th>Expiry</th><th>File</th><th>Status</th></tr></thead>
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Amount</th>
+                                    <th>Reason</th>
+                                    <th>Date</th>
+                                    <th>Installments</th>
+                                    <th>Pending</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
                             <tbody>
-                                @foreach($employee->documents as $doc)
-                                    <tr>
-                                        <td><strong>{{ ucfirst($doc->document_type) }}</strong></td>
-                                        <td>{{ $doc->document_number ?? '-' }}</td>
-                                        <td>{{ $doc->expiry_date?->format('d M Y') ?? '-' }}</td>
-                                        <td>
-                                            @if($doc->file_path)
-                                                <a href="{{ Storage::url($doc->file_path) }}" target="_blank" class="btn btn-sm btn-outline-primary">View</a>
-                                            @else
-                                                -
-                                            @endif
-                                        </td>
-                                        <td>
-                                            @if($doc->isExpiringSoon())
-                                                <span class="badge bg-warning">Expiring Soon</span>
-                                            @elseif($doc->isExpired())
-                                                <span class="badge bg-danger">Expired</span>
-                                            @else
-                                                <span class="badge bg-success">Valid</span>
-                                            @endif
-                                        </td>
-                                    </tr>
+                                @foreach($employee->advances->sortByDesc('id')->take(5) as $adv)
+                                <tr>
+                                    <td>#{{ $adv->id }}</td>
+                                    <td>{{ number_format($adv->amount) }} AED</td>
+                                    <td>{{ $adv->reason ?? '-' }}</td>
+                                    <td>{{ $adv->advance_date->format('d M Y') }}</td>
+                                    <td>{{ $adv->paid_installments ?? 0 }}/{{ $adv->total_installments ?? 0 }}</td>
+                                    <td>{{ number_format($adv->pending_amount ?? 0) }} AED</td>
+                                    <td>
+                                        @if($adv->status === 'active')
+                                            <span class="badge bg-warning">Active</span>
+                                        @elseif($adv->status === 'completed')
+                                            <span class="badge bg-success">Completed</span>
+                                        @else
+                                            <span class="badge bg-secondary">{{ ucfirst($adv->status) }}</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        <a href="{{ route('advances.show', $adv) }}" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
                                 @endforeach
                             </tbody>
                         </table>
                     </div>
-                @else
-                    <div class="text-center py-5 text-muted"><i class="bi bi-file-earmark-text fs-1 mb-3"></i><br>No documents</div>
-                @endif
-            </div>
-
-
-            {{-- Advances --}}
-            <div class="tab-pane fade" id="advances" role="tabpanel">
-                @if($employee->advances->count())
-                    <div class="table-responsive">
-                        <table class="table table-sm">
-                            <thead><tr><th>#</th><th>Amount</th><th>Date</th><th>Status</th></tr></thead>
-                            <tbody>
-                                @foreach($employee->advances->take(10) as $adv)
-                                    <tr>
-                                        <td><a href="{{ route('advances.show', $adv) }}">#{{ $adv->id }}</a></td>
-                                        <td>{{ number_format($adv->amount) }}</td>
-                                        <td>{{ $adv->advance_date->format('d M Y') }}</td>
-                                        <td><span class="badge bg-info">{{ ucfirst($adv->status) }}</span></td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                        @if($employee->advances->count() > 10)
-                            <small class="text-muted">Showing 10 of {{ $employee->advances->count() }} advances</small>
-                        @endif
+                    @if($employee->advances->count() > 5)
+                    <div class="text-center mt-3">
+                        <small class="text-muted">Showing 5 of {{ $employee->advances->count() }} advances</small>
                     </div>
-                @else
-                    <div class="text-center py-5 text-muted"><i class="bi bi-cash-coin fs-1 mb-3"></i><br>No advances</div>
-                @endif
+                    @endif
+                </div>
             </div>
+            @endif
 
-            {{-- Custom Fields --}}
-            <div class="tab-pane fade" id="custom" role="tabpanel">
-                @if($employee->custom_fields && count($employee->custom_fields))
-                    <div class="table-responsive">
-                        <table class="table table-sm">
-                            <thead><tr><th>Field Name</th><th>Value</th></tr></thead>
-                            <tbody>
-                                @foreach($employee->custom_fields as $key => $value)
-                                    <tr>
-                                        <td><strong>{{ ucfirst(str_replace('_', ' ', $key)) }}</strong></td>
-                                        <td>{{ $value }}</td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                @else
-                    <div class="text-center py-5 text-muted"><i class="bi bi-gear fs-1 mb-3"></i><br>No custom fields</div>
-                @endif
-            </div>
+            {{-- Tabs for Additional Information --}}
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-0 pt-3">
+                    <ul class="nav nav-tabs card-header-tabs" id="employeeTabs" role="tablist">
+                        <li class="nav-item">
+                            <button class="nav-link active" id="documents-tab" data-bs-toggle="tab" data-bs-target="#documents" type="button">
+                                <i class="bi bi-file-earmark-text me-1"></i> Documents
+                                <span class="badge bg-secondary ms-1">{{ $employee->documents->count() }}</span>
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" id="payrolls-tab" data-bs-toggle="tab" data-bs-target="#payrolls" type="button">
+                                <i class="bi bi-receipt me-1"></i> Payroll History
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" id="custom-tab" data-bs-toggle="tab" data-bs-target="#custom" type="button">
+                                <i class="bi bi-grid me-1"></i> Custom Fields
+                                <span class="badge bg-secondary ms-1">{{ count($employee->custom_fields ?? []) }}</span>
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+                <div class="card-body">
+                    <div class="tab-content" id="employeeTabContent">
+                        {{-- Documents Tab --}}
+                        <div class="tab-pane fade show active" id="documents" role="tabpanel">
+                            @if($employee->documents->count())
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Type</th>
+                                                <th>Document Number</th>
+                                                <th>Expiry Date</th>
+                                                <th>File</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach($employee->documents as $doc)
+                                            <tr>
+                                                <td>
+                                                    <i class="bi bi-file-text me-2 text-primary"></i>
+                                                    <strong>{{ ucfirst(str_replace('_', ' ', $doc->document_type)) }}</strong>
+                                                </td>
+                                                <td>{{ $doc->document_number ?? '-' }}</td>
+                                                <td>{{ $doc->expiry_date?->format('d M Y') ?? '-' }}</td>
+                                                <td>
+                                                    @if($doc->file_path)
+                                                        <a href="{{ Storage::url($doc->file_path) }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                                            <i class="bi bi-download"></i> View
+                                                        </a>
+                                                    @else
+                                                        <span class="text-muted">No file</span>
+                                                    @endif
+                                                </td>
+                                                <td>
+                                                    @if($doc->isExpired())
+                                                        <span class="badge bg-danger">Expired</span>
+                                                    @elseif($doc->isExpiringSoon())
+                                                        <span class="badge bg-warning">Expiring Soon</span>
+                                                    @else
+                                                        <span class="badge bg-success">Valid</span>
+                                                    @endif
+                                                </td>
+                                            </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            @else
+                                <div class="text-center py-5">
+                                    <i class="bi bi-file-earmark-text fs-1 text-muted mb-3 d-block"></i>
+                                    <p class="text-muted">No documents uploaded yet</p>
+                                </div>
+                            @endif
+                        </div>
 
-            {{-- Payrolls --}}
-            <div class="tab-pane fade" id="payrolls" role="tabpanel">
-                @if($employee->payrollRecords->count())
-                    <div class="table-responsive">
-                        <table class="table table-sm">
-                            <thead><tr><th>Month</th><th>Gross</th><th>Deductions</th><th>Net</th><th>Status</th></tr></thead>
-                            <tbody>
-                                @foreach($employee->payrollRecords->take(10) as $record)
-                                    <tr>
-                                        <td>{{ $record->payroll_month->format('M Y') }}</td>
-                                        <td>{{ number_format($record->gross_salary) }}</td>
-                                        <td>{{ number_format($record->total_deductions) }}</td>
-                                        <td><strong>{{ number_format($record->net_salary) }}</strong></td>
-                                        <td><span class="badge bg-success">{{ ucfirst($record->status) }}</span></td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
+                        {{-- Payroll History Tab --}}
+                        <div class="tab-pane fade" id="payrolls" role="tabpanel">
+                            @if($employee->payrollRecords->count())
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Month</th>
+                                                <th>Gross Salary</th>
+                                                <th>Total Deductions</th>
+                                                <th>Net Salary</th>
+                                                <th>Status</th>
+                                                <th>Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach($employee->payrollRecords->sortByDesc('payroll_month')->take(10) as $record)
+                                            <tr>
+                                                <td>{{ $record->payroll_month->format('M Y') }}</td>
+                                                <td>{{ number_format($record->gross_salary) }} AED</td>
+                                                <td>{{ number_format($record->total_deductions) }} AED</td>
+                                                <td><strong>{{ number_format($record->net_salary) }} AED</strong></td>
+                                                <td>
+                                                    <span class="badge bg-success">{{ ucfirst($record->status) }}</span>
+                                                </td>
+                                                <td>
+                                                    <a href="{{ route('payroll.slip', $record) }}" class="btn btn-sm btn-outline-primary">
+                                                        <i class="bi bi-printer"></i> Slip
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            @else
+                                <div class="text-center py-5">
+                                    <i class="bi bi-receipt fs-1 text-muted mb-3 d-block"></i>
+                                    <p class="text-muted">No payroll records found</p>
+                                </div>
+                            @endif
+                        </div>
+
+                        {{-- Custom Fields Tab --}}
+                        <div class="tab-pane fade" id="custom" role="tabpanel">
+                            @if($employee->custom_fields && count($employee->custom_fields))
+                                <div class="row g-3">
+                                    @foreach($employee->custom_fields as $key => $value)
+                                        <div class="col-md-6">
+                                            <div class="border rounded-3 p-3">
+                                                <small class="text-muted d-block mb-1">{{ ucfirst(str_replace('_', ' ', $key)) }}</small>
+                                                <span class="fw-semibold">{{ $value }}</span>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @else
+                                <div class="text-center py-5">
+                                    <i class="bi bi-grid fs-1 text-muted mb-3 d-block"></i>
+                                    <p class="text-muted">No custom fields defined</p>
+                                </div>
+                            @endif
+                        </div>
                     </div>
-                @else
-                    <div class="text-center py-5 text-muted"><i class="bi bi-calendar-check fs-1 mb-3"></i><br>No payroll records</div>
-                @endif
+                </div>
             </div>
         </div>
     </div>
-
-    <div class="col-md-4">
-        <a href="{{ route('payroll.process') }}" class="btn btn-primary w-100 mb-2">Process Payroll</a>
-        <a href="{{ route('payroll.history') }}" class="btn btn-outline-primary w-100 mb-2">Payroll History</a>
-        <a href="{{ route('advances.create') }}?employee_id={{ $employee->id }}" class="btn btn-outline-success w-100 mb-2">New Advance</a>
-    </div>
 </div>
 
+<style>
+    .bg-gradient-primary {
+        background: linear-gradient(135deg, #2B5797 0%, #1E3A6F 100%);
+    }
+    
+    .card {
+        border-radius: 1rem;
+        overflow: hidden;
+    }
+    
+    .card-header {
+        background: transparent;
+        border-bottom: 1px solid rgba(0,0,0,0.08);
+    }
+    
+    .nav-tabs .nav-link {
+        border: none;
+        color: #6c757d;
+        padding: 0.75rem 1.25rem;
+        font-weight: 500;
+    }
+    
+    .nav-tabs .nav-link.active {
+        color: #2B5797;
+        border-bottom: 2px solid #2B5797;
+        background: transparent;
+    }
+    
+    .nav-tabs .nav-link:hover {
+        border-color: transparent;
+        color: #2B5797;
+    }
+    
+    .table > :not(caption) > * > * {
+        padding: 1rem 0.75rem;
+        vertical-align: middle;
+    }
+    
+    .badge {
+        font-weight: 500;
+        padding: 0.35rem 0.65rem;
+    }
+    
+    .btn {
+        font-weight: 500;
+    }
+    
+    .hover-shadow:hover {
+        transform: translateY(-2px);
+        transition: all 0.3s ease;
+    }
+</style>
 @endsection
-

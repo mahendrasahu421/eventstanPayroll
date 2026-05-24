@@ -3,255 +3,438 @@
 @section('title', 'Edit Employee')
 
 @section('content')
-<div class="d-flex align-items-center gap-3 mb-4">
-    <i class="bi bi-pencil-square fs-2 text-warning"></i>
-    <h2>Edit Employee: {{ $employee->full_name }}</h2>
-</div>
-
-<form method="POST" action="{{ route('employees.update', $employee) }}" enctype="multipart/form-data" id="employeeForm">
-    @csrf @method('PUT')
-
-    {{-- Photo Upload --}}
-    <div class="row mb-4">
-        <div class="col-md-3 text-center">
-            <div class="position-relative">
-                @if($employee->photo)
-                    <img src="{{ Storage::url($employee->photo) }}" id="preview" class="rounded-circle border border-3 border-white shadow-sm" style="width:150px;height:150px;object-fit:cover;">
-                @else
-                    <img src="https://ui-avatars.com/api/?name={{ $employee->first_name }}+{{ $employee->last_name }}&size=150&background=2B5797&color=fff" id="preview" class="rounded-circle border border-3 border-white shadow-sm" style="width:150px;height:150px;object-fit:cover;">
-                @endif
-                <label for="photo" class="photo-upload position-absolute bottom-0 end-0">
-                    <i class="bi bi-camera-fill text-white bg-primary rounded-circle p-2"></i>
-                    <input type="file" id="photo" name="photo" class="d-none" accept="image/*" onchange="previewPhoto(this)">
-                </label>
+<div class="container-fluid px-4">
+    {{-- Header Section --}}
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div class="d-flex align-items-center gap-3">
+            <div class="rounded-3 bg-warning bg-opacity-10 p-3">
+                <i class="bi bi-pencil-square fs-2 text-warning"></i>
             </div>
-            @error('photo') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+            <div>
+                <h1 class="display-6 fw-bold mb-0" style="font-size: 2rem;">Edit Employee</h1>
+                <p class="text-muted mb-0">{{ $employee->full_name }} ({{ $employee->employee_code }})</p>
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{{ route('employees.show', $employee) }}" class="btn btn-outline-secondary">
+                <i class="bi bi-eye me-1"></i> View Profile
+            </a>
         </div>
     </div>
 
-    {{-- Employee ID --}}
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <label class="form-label fw-bold">Employee ID</label>
-            <input type="text" class="form-control bg-light" value="{{ $employee->employee_code }}" readonly>
-        </div>
-    </div>
+    <form method="POST" action="{{ route('employees.update', $employee) }}" enctype="multipart/form-data" id="employeeForm">
+        @csrf 
+        @method('PUT')
 
-    {{-- Accordion Sections --}}
-    <div class="accordion" id="employeeSections">
+        <div class="row g-4">
+            {{-- Left Column - Photo & Basic Info --}}
+            <div class="col-lg-4">
+                {{-- Photo Upload Card --}}
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-body text-center p-4">
+                        <div class="position-relative d-inline-block mb-3">
+                            <div id="photoPreviewContainer" class="position-relative">
+                                @if($employee->photo)
+                                    <img src="{{ Storage::url($employee->photo) }}" id="preview" 
+                                         class="rounded-circle border border-4 border-white shadow-lg" 
+                                         style="width: 150px; height: 150px; object-fit: cover;">
+                                @else
+                                    <img src="https://ui-avatars.com/api/?name={{ urlencode($employee->first_name) }}+{{ urlencode($employee->last_name) }}&size=150&background=2B5797&color=fff&rounded=true&bold=true" 
+                                         id="preview" class="rounded-circle border border-4 border-white shadow-lg" 
+                                         style="width: 150px; height: 150px; object-fit: cover;">
+                                @endif
+                                <div class="position-absolute bottom-0 end-0 bg-primary rounded-circle p-2" style="cursor: pointer;" onclick="document.getElementById('photo').click()">
+                                    <i class="bi bi-camera-fill text-white small"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="upload-info">
+                            <p class="mb-1 fw-semibold">Change Profile Photo</p>
+                            <small class="text-muted">PNG, JPG up to 2MB</small>
+                            <input type="file" id="photo" name="photo" class="d-none" accept="image/*" onchange="previewPhoto(this)">
+                        </div>
+                        @error('photo')
+                            <div class="alert alert-danger py-1 small mt-2 mb-0">{{ $message }}</div>
+                        @enderror
+                    </div>
+                </div>
 
-        {{-- Personal Details --}}
-        <div class="accordion-item">
-            <h2 class="accordion-header">
-                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#personalDetails">
-                    🧑‍💼 Personal Details
-                </button>
-            </h2>
-            <div id="personalDetails" class="accordion-collapse collapse show" data-bs-parent="#employeeSections">
-                <div class="accordion-body">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Full Name *</label>
-                            <input type="text" name="first_name" id="first_name" class="form-control @error('first_name') is-invalid @enderror" value="{{ old('first_name', $employee->first_name) }}" required>
-                            @error('first_name') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                        </div>
-                        <div class="col-md-6">
-                            <input type="text" name="last_name" id="last_name" class="form-control @error('last_name') is-invalid @enderror" value="{{ old('last_name', $employee->last_name) }}" required>
-                            @error('last_name') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Designation *</label>
-                            <select name="designation_id" id="designationSelect" class="form-select @error('designation_id') is-invalid @enderror" required>
-                                <option value="">Select Designation</option>
-                                @foreach($designations as $des)
-                                    <option value="{{ $des->id }}" data-department-id="{{ $des->department_id ?? '' }}" {{ old('designation_id', $employee->designation_id) == $des->id ? 'selected' : '' }}>{{ $des->name }}</option>
-                                @endforeach
+                {{-- Employee ID Card --}}
+                <div class="card border-0 shadow-sm mb-4 bg-gradient-primary text-white" style="background: linear-gradient(135deg, #2B5797 0%, #1E3A6F 100%);">
+                    <div class="card-body text-center py-4">
+                        <i class="bi bi-qr-code fs-1 mb-2 opacity-75"></i>
+                        <p class="text-uppercase small mb-1 opacity-75">Employee Identification Number</p>
+                        <h3 class="fw-bold mb-0 tracking-wide">{{ $employee->employee_code }}</h3>
+                    </div>
+                </div>
+
+                {{-- Status Card --}}
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-transparent border-0 pt-3">
+                        <h6 class="mb-0 fw-bold"><i class="bi bi-toggle2-on me-2 text-primary"></i>Employee Status</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted">Current Status</span>
+                            <select name="status" class="form-select w-auto">
+                                <option value="active" {{ old('status', $employee->status) == 'active' ? 'selected' : '' }} class="text-success">✓ Active</option>
+                                <option value="inactive" {{ old('status', $employee->status) == 'inactive' ? 'selected' : '' }} class="text-secondary">✗ Inactive</option>
                             </select>
                         </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Department *</label>
-                            <select name="department_id" id="departmentSelect" class="form-select @error('department_id') is-invalid @enderror" required>
-                                <option value="">Select Department</option>
-                                @foreach($departments as $dept)
-                                    <option value="{{ $dept->id }}" {{ old('department_id', $employee->department_id) == $dept->id ? 'selected' : '' }}>{{ $dept->name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        <div class="col-md-4">
-                            <label class="form-label">Status</label>
-                            <select name="status" class="form-select">
-                                <option value="active" {{ old('status', $employee->status) == 'active' ? 'selected' : '' }}>Active</option>
-                                <option value="inactive" {{ old('status', $employee->status) == 'inactive' ? 'selected' : '' }}>Inactive</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Phone</label>
-                            <input type="tel" name="phone" class="form-control @error('phone') is-invalid @enderror" value="{{ old('phone', $employee->phone) }}">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Email</label>
-                            <input type="email" name="email" class="form-control @error('email') is-invalid @enderror" value="{{ old('email', $employee->email) }}">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Nationality</label>
-                            <select name="country_id" class="form-select">
-                                <option value="">Select Country</option>
-                                @foreach ($countries as $country)
-                                    <option value="{{ $country->id }}" {{ old('country_id', $employee->country_id) == $country->id ? 'selected' : '' }}>
-                                        {{ $country->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        <div class="col-md-4">
-                            <label class="form-label">WPS Number</label>
-                            <input type="text" name="wps_personal_number" class="form-control" value="{{ old('wps_personal_number', $employee->wps_personal_number) }}">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Join Date *</label>
-                            <input type="date" name="joining_date" class="form-control @error('joining_date') is-invalid @enderror" value="{{ old('joining_date', $employee->joining_date) }}" required>
-                        </div>
-                        <div class="col-md-12">
-                            <label class="form-label">Payroll Company</label>
-                            <div class="form-control" style="background:#f8f9fa;">{{ $employee->custom_fields['payroll_company'] ?? '' }}</div>
-                            <input type="hidden" name="custom_fields[payroll_company]" value="{{ old('custom_fields.payroll_company', $employee->custom_fields['payroll_company'] ?? '') }}">
+                        <hr class="my-3">
+                        <div class="d-flex justify-content-between">
+                            <small class="text-muted">Joined Date</small>
+                            <small class="fw-semibold">{{ $employee->joining_date?->format('d M Y') ?? 'N/A' }}</small>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        {{-- Salary & Compensation (load from salaryStructure) --}}
-        <div class="accordion-item">
-            <h2 class="accordion-header">
-                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#salary">
-                    💰 Salary & Compensation
-                </button>
-            </h2>
-            <div id="salary" class="accordion-collapse collapse" data-bs-parent="#employeeSections">
-                <div class="accordion-body">
-                    @if($employee->salaryStructure)
-                        <div class="row g-3">
-                            <div class="col-md-4">
-                                <label class="form-label">Basic Salary *</label>
-                                <input type="number" name="basic_salary" step="0.01" class="form-control" value="{{ old('basic_salary', $employee->salaryStructure->basic_salary) }}" min="0">
+            {{-- Right Column - Form Sections --}}
+            <div class="col-lg-8">
+                {{-- Personal Information Card --}}
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-transparent border-0 pt-3">
+                        <h5 class="mb-0 fw-bold"><i class="bi bi-person-badge me-2 text-primary"></i>Personal Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">First Name <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light"><i class="bi bi-person-fill"></i></span>
+                                    <input type="text" name="first_name" id="first_name" 
+                                           class="form-control @error('first_name') is-invalid @enderror" 
+                                           value="{{ old('first_name', $employee->first_name) }}" required>
+                                </div>
+                                @error('first_name') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                             </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Overtime Hourly Rate</label>
-                                <input type="number" name="overtime_rate_per_hour" step="0.01" class="form-control" value="{{ old('overtime_rate_per_hour', $employee->salaryStructure->overtime_rate_per_hour) }}" min="0">
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Last Name <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light"><i class="bi bi-person-fill"></i></span>
+                                    <input type="text" name="last_name" id="last_name" 
+                                           class="form-control @error('last_name') is-invalid @enderror" 
+                                           value="{{ old('last_name', $employee->last_name) }}" required>
+                                </div>
+                                @error('last_name') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                             </div>
-                            <div class="col-md-4">
-                                <label class="form-label">WPS Salary / 1st Transfer</label>
-                                <input type="number" name="wps_first_transfer_amount" step="0.01" class="form-control" value="{{ old('wps_first_transfer_amount', $employee->salaryStructure->wps_first_transfer_amount) }}" min="0">
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Email Address</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light"><i class="bi bi-envelope"></i></span>
+                                    <input type="email" name="email" 
+                                           class="form-control @error('email') is-invalid @enderror" 
+                                           value="{{ old('email', $employee->email) }}" placeholder="john@company.com">
+                                </div>
+                                @error('email') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Phone Number</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light"><i class="bi bi-telephone"></i></span>
+                                    <input type="tel" name="phone" 
+                                           class="form-control @error('phone') is-invalid @enderror" 
+                                           value="{{ old('phone', $employee->phone) }}" placeholder="+971 ...">
+                                </div>
+                                @error('phone') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Nationality</label>
+                                <select name="country_id" class="form-select">
+                                    <option value="">Select Country</option>
+                                    @foreach ($countries as $country)
+                                        <option value="{{ $country->id }}" {{ old('country_id', $employee->country_id) == $country->id ? 'selected' : '' }}>
+                                            {{ $country->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Joining Date <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light"><i class="bi bi-calendar3"></i></span>
+                                    <input type="date" name="joining_date" 
+                                           class="form-control @error('joining_date') is-invalid @enderror" 
+                                           value="{{ old('joining_date', $employee->joining_date) }}" required>
+                                </div>
+                                @error('joining_date') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                             </div>
                         </div>
-                    @else
-                        <div class="alert alert-warning">
-                            No salary structure found. <a href="{{ route('employees.salary', $employee) }}">Set up salary first</a>.
-                        </div>
-                    @endif
+                    </div>
                 </div>
-            </div>
-        </div>
 
-        {{-- Documents (display existing, allow add new) --}}
-        <div class="accordion-item">
-            <h2 class="accordion-header">
-                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#documents">
-                    📄 Documents ({{ $employee->documents->count() }})
-                </button>
-            </h2>
-            <div id="documents" class="accordion-collapse collapse" data-bs-parent="#employeeSections">
-                <div class="accordion-body">
-                    <div class="table-responsive mb-3">
-                        <table class="table table-sm">
-                            <thead><tr><th>Type</th><th>Number</th><th>Expiry</th><th>Actions</th></tr></thead>
-                            <tbody>
-                                @foreach($employee->documents as $doc)
+                {{-- Employment Details Card --}}
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-transparent border-0 pt-3">
+                        <h5 class="mb-0 fw-bold"><i class="bi bi-briefcase me-2 text-primary"></i>Employment Details</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Department <span class="text-danger">*</span></label>
+                                <select name="department_id" id="departmentSelect" 
+                                        class="form-select @error('department_id') is-invalid @enderror" required>
+                                    <option value="">Select Department</option>
+                                    @foreach($departments as $dept)
+                                        <option value="{{ $dept->id }}" {{ old('department_id', $employee->department_id) == $dept->id ? 'selected' : '' }}>
+                                            {{ $dept->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('department_id') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Designation <span class="text-danger">*</span></label>
+                                <select name="designation_id" id="designationSelect" 
+                                        class="form-select @error('designation_id') is-invalid @enderror" required>
+                                    <option value="">Select Designation</option>
+                                    @foreach($designations as $des)
+                                        <option value="{{ $des->id }}" 
+                                                data-department-id="{{ $des->department_id ?? '' }}" 
+                                                {{ old('designation_id', $employee->designation_id) == $des->id ? 'selected' : '' }}>
+                                            {{ $des->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('designation_id') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">WPS Number</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light"><i class="bi bi-bank2"></i></span>
+                                    <input type="text" name="wps_personal_number" class="form-control" 
+                                           value="{{ old('wps_personal_number', $employee->wps_personal_number) }}" 
+                                           placeholder="WPS-XXX-XXXXX">
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Payroll Company</label>
+                                <input type="text" class="form-control bg-light" value="{{ old('custom_fields.payroll_company', $companyName ?? $employee->custom_fields['payroll_company'] ?? 'Not configured') }}" readonly>
+                                <input type="hidden" name="custom_fields[payroll_company]" value="{{ old('custom_fields.payroll_company', $companyName ?? $employee->custom_fields['payroll_company'] ?? '') }}">
+                                <small class="text-muted">Pulled from Company Master settings.</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Salary Information Card (if exists) --}}
+                @if($employee->salaryStructure)
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-transparent border-0 pt-3 d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0 fw-bold"><i class="bi bi-currency-dollar me-2 text-primary"></i>Salary Information</h5>
+                        <a href="{{ route('employees.salary', $employee) }}" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-pencil me-1"></i> Edit Salary
+                        </a>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-4">
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Basic Salary</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light">AED</span>
+                                    <input type="number" name="basic_salary" step="0.01" class="form-control" 
+                                           value="{{ old('basic_salary', $employee->salaryStructure->basic_salary) }}" min="0">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Overtime Rate</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light">AED/hr</span>
+                                    <input type="number" name="overtime_rate_per_hour" step="0.01" class="form-control" 
+                                           value="{{ old('overtime_rate_per_hour', $employee->salaryStructure->overtime_rate_per_hour) }}" min="0">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">WPS First Transfer</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light">AED</span>
+                                    <input type="number" name="wps_first_transfer_amount" step="0.01" class="form-control" 
+                                           value="{{ old('wps_first_transfer_amount', $employee->salaryStructure->wps_first_transfer_amount) }}" min="0">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                @else
+                <div class="alert alert-warning mb-4">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    No salary structure found. <a href="{{ route('employees.salary', $employee) }}" class="alert-link">Set up salary first</a>.
+                </div>
+                @endif
+
+                {{-- Documents Section --}}
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-transparent border-0 pt-3">
+                        <h5 class="mb-0 fw-bold"><i class="bi bi-file-earmark-text me-2 text-primary"></i>Documents</h5>
+                    </div>
+                    <div class="card-body">
+                        @if($employee->documents->count())
+                        <div class="table-responsive mb-4">
+                            <table class="table table-sm table-hover">
+                                <thead class="table-light">
                                     <tr>
-                                        <td>{{ ucfirst($doc->document_type) }}</td>
+                                        <th>Type</th>
+                                        <th>Number</th>
+                                        <th>Expiry Date</th>
+                                        <th>File</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($employee->documents as $doc)
+                                    <tr>
+                                        <td><i class="bi bi-file-text me-1 text-primary"></i> {{ ucfirst(str_replace('_', ' ', $doc->document_type)) }}</td>
                                         <td>{{ $doc->document_number ?? '-' }}</td>
                                         <td>{{ $doc->expiry_date?->format('d M Y') ?? '-' }}</td>
                                         <td>
                                             @if($doc->file_path)
-                                                <a href="{{ Storage::url($doc->file_path) }}" target="_blank" class="btn btn-sm btn-outline-primary">View</a>
+                                                <a href="{{ Storage::url($doc->file_path) }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                                    <i class="bi bi-eye"></i> View
+                                                </a>
+                                            @else
+                                                <span class="text-muted">No file</span>
+                                            @endif
+                                        </td>
+                                        <td>
+                                            @if($doc->isExpired())
+                                                <span class="badge bg-danger">Expired</span>
+                                            @elseif($doc->isExpiringSoon())
+                                                <span class="badge bg-warning">Expiring Soon</span>
+                                            @else
+                                                <span class="badge bg-success">Valid</span>
                                             @endif
                                         </td>
                                     </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                    <h6 class="mb-2">Add New Document</h6>
-                    {{-- Simplified new document add for edit --}}
-                    <div class="row g-2">
-                        <div class="col-md-3">
-                            <select name="new_document[type]" class="form-select form-select-sm">
-                                <option value="">Select Type</option>
-                                <option value="passport">Passport</option>
-                                <option value="emirates_id">Emirates ID</option>
-                                <option value="labour_card">Labour Card</option>
-                                <option value="driving_license">Driving License</option>
-                            </select>
+                                    @endforeach
+                                </tbody>
+                            </table>
                         </div>
-                        <div class="col-md-3">
-                            <input type="text" name="new_document[number]" class="form-control form-control-sm" placeholder="Number">
-                        </div>
-                        <div class="col-md-3">
-                            <input type="date" name="new_document[expiry_date]" class="form-control form-control-sm">
-                        </div>
-                        <div class="col-md-3">
-                            <input type="file" name="new_document[file]" class="form-control form-control-sm" accept="image/*,application/pdf">
+                        @endif
+
+                        <div class="border rounded-3 p-3">
+                            <h6 class="fw-bold mb-3"><i class="bi bi-plus-circle me-1"></i> Add New Document</h6>
+                            <div class="row g-2">
+                                <div class="col-md-3">
+                                    <select name="new_document[type]" class="form-select form-select-sm">
+                                        <option value="">Select Type</option>
+                                        <option value="passport">Passport</option>
+                                        <option value="emirates_id">Emirates ID</option>
+                                        <option value="labour_card">Labour Card</option>
+                                        <option value="driving_license">Driving License</option>
+                                        <option value="visa">Visa</option>
+                                        <option value="degree">Degree Certificate</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <input type="text" name="new_document[number]" class="form-control form-control-sm" placeholder="Document Number">
+                                </div>
+                                <div class="col-md-2">
+                                    <input type="date" name="new_document[expiry_date]" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-md-4">
+                                    <input type="file" name="new_document[file]" class="form-control form-control-sm" accept="image/*,application/pdf">
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
 
-        {{-- Custom Fields --}}
-        <div class="accordion-item">
-            <h2 class="accordion-header">
-                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#customFields">
-                    ⚙️ Custom Fields
-                </button>
-            </h2>
-            <div id="customFields" class="accordion-collapse collapse" data-bs-parent="#employeeSections">
-                <div class="accordion-body">
-                    <div id="customFieldsContainer">
-                        @if($employee->custom_fields)
-                            @foreach($employee->custom_fields as $key => $value)
-                                <div class="row g-2 mb-2 custom-field-row">
-                                    <div class="col-md-5">
-                                        <input type="text" name="dynamic_custom_fields[{{ $loop->index }}][name]" class="form-control form-control-sm" value="{{ $key }}" required>
-                                    </div>
-                                    <div class="col-md-5">
-                                        <input type="text" name="dynamic_custom_fields[{{ $loop->index }}][value]" class="form-control form-control-sm" value="{{ $value }}">
-                                    </div>
-                                    <div class="col-md-2">
-                                        <button type="button" class="btn btn-sm btn-danger w-100" onclick="removeCustomField(this)">Remove</button>
-                                    </div>
-                                </div>
-                            @endforeach
-                        @endif
+                {{-- Custom Fields Section --}}
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-transparent border-0 pt-3 d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0 fw-bold"><i class="bi bi-puzzle me-2 text-primary"></i>Custom Fields</h5>
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="addCustomField()">
+                            <i class="bi bi-plus-circle me-1"></i> Add Field
+                        </button>
                     </div>
-                    <button type="button" class="btn btn-sm btn-outline-primary mt-2" onclick="addCustomField()">
-                        <i class="bi bi-plus"></i> Add Custom Field
+                    <div class="card-body">
+                        <div id="customFieldsContainer">
+                            @if($employee->custom_fields)
+                                @foreach($employee->custom_fields as $key => $value)
+                                    @if($key !== 'payroll_company' && $key !== 'insurance_provider' && $key !== 'insurance_policy_number' && $key !== 'insurance_start_date' && $key !== 'insurance_end_date')
+                                    <div class="row g-2 mb-2 custom-field-row">
+                                        <div class="col-md-5">
+                                            <input type="text" name="dynamic_custom_fields[{{ $loop->index }}][name]" 
+                                                   class="form-control form-control-sm" value="{{ $key }}" required>
+                                        </div>
+                                        <div class="col-md-5">
+                                            <input type="text" name="dynamic_custom_fields[{{ $loop->index }}][value]" 
+                                                   class="form-control form-control-sm" value="{{ $value }}">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <button type="button" class="btn btn-sm btn-danger w-100" onclick="removeCustomField(this)">
+                                                <i class="bi bi-trash"></i> Remove
+                                            </button>
+                                        </div>
+                                    </div>
+                                    @endif
+                                @endforeach
+                            @endif
+                        </div>
+                        <div class="text-muted small mt-2">
+                            <i class="bi bi-info-circle-fill me-1"></i> Add custom fields as per your requirement.
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Submit Actions --}}
+                <div class="d-flex justify-content-end gap-3 mb-4">
+                    <a href="{{ route('employees.show', $employee) }}" class="btn btn-outline-secondary px-4">
+                        <i class="bi bi-x-lg me-1"></i> Cancel
+                    </a>
+                    <button type="submit" class="btn btn-primary px-5">
+                        <i class="bi bi-check-lg me-1"></i> Update Employee
                     </button>
                 </div>
             </div>
         </div>
+    </form>
+</div>
 
-    </div>
-
-    <div class="d-flex justify-content-end gap-2 mt-4">
-        <a href="{{ route('employees.show', $employee) }}" class="btn btn-secondary">Cancel</a>
-        <button type="submit" class="btn btn-primary">
-            <i class="bi bi-check-lg"></i> Update Employee
-        </button>
-    </div>
-</form>
+<style>
+    .bg-gradient-primary {
+        background: linear-gradient(135deg, #2B5797 0%, #1E3A6F 100%);
+    }
+    .tracking-wide {
+        letter-spacing: 2px;
+    }
+    .card {
+        border-radius: 1rem;
+        overflow: hidden;
+    }
+    .card-header {
+        border-radius: 1rem 1rem 0 0 !important;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: #2B5797;
+        box-shadow: 0 0 0 0.2rem rgba(43,87,151,0.15);
+    }
+    .btn-primary {
+        background-color: #2B5797;
+        border-color: #2B5797;
+    }
+    .btn-primary:hover {
+        background-color: #1E3A6F;
+        border-color: #1E3A6F;
+    }
+    .btn-outline-primary {
+        color: #2B5797;
+        border-color: #2B5797;
+    }
+    .btn-outline-primary:hover {
+        background-color: #2B5797;
+        border-color: #2B5797;
+    }
+</style>
 
 <script>
 function previewPhoto(input) {
@@ -264,7 +447,8 @@ function previewPhoto(input) {
     }
 }
 
-let customFieldIndex = {{ count($employee->custom_fields ?? []) }};
+let customFieldIndex = {{ count(array_filter($employee->custom_fields ?? [], function($key) { return $key !== 'payroll_company' && $key !== 'insurance_provider' && $key !== 'insurance_policy_number' && $key !== 'insurance_start_date' && $key !== 'insurance_end_date'; }, ARRAY_FILTER_USE_KEY)) }};
+
 function addCustomField() {
     const container = document.getElementById('customFieldsContainer');
     const fieldHtml = `
@@ -295,7 +479,7 @@ document.querySelectorAll('input[name="first_name"], input[name="last_name"]').f
     input.addEventListener('input', function() {
         const first = document.getElementById('first_name')?.value || '{{ $employee->first_name }}';
         const last = document.querySelector('input[name="last_name"]')?.value || '{{ $employee->last_name }}';
-        document.getElementById('preview').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(first + '+' + last)}&size=150&background=2B5797&color=fff`;
+        document.getElementById('preview').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(first + '+' + last)}&size=150&background=2B5797&color=fff&rounded=true&bold=true`;
     });
 });
 
@@ -305,7 +489,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const designationSelect = document.getElementById('designationSelect');
     if (!departmentSelect || !designationSelect) return;
 
-    const selectedDesignationId = {{ old('designation_id', $employee->designation_id) ? old('designation_id', $employee->designation_id) : 'null' }};
+    const selectedDesignationId = {{ old('designation_id', $employee->designation_id) ?: 'null' }};
 
     async function loadDesignations(departmentId, designationId = null) {
         if (!departmentId) {
@@ -314,7 +498,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         designationSelect.innerHTML = '<option value="">Loading...</option>';
-
 
         const url = `{{ url('/employees/designations') }}/${departmentId}`;
         try {
@@ -344,8 +527,4 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 </script>
-
 @endsection
-
-
-
