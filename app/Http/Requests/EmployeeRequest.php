@@ -16,11 +16,12 @@ class EmployeeRequest extends FormRequest
         $id = $this->route('employee')?->id;
 
         return [
-            // Personal fields
+// Personal fields
             'first_name'         => 'required|string|max:100',
             'last_name'          => 'required|string|max:100',
             'email'              => "nullable|email|unique:employees,email,{$id}",
             'phone'              => 'nullable|string|max:20',
+            'company_id'         => 'required|exists:companies,id',
             'country_id'         => 'nullable|exists:countries,id',
             'nationality'        => 'nullable|string|max:50',
 

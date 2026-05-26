@@ -22,20 +22,21 @@ class SettingsController extends Controller
     public function update(Request $request)
     {
         $validated = $request->validate([
-            'company_name'             => 'required|string|max:255',
-            'company_email'            => 'nullable|email',
-            'company_phone'            => 'nullable|string|max:30',
-            'company_address'          => 'nullable|string',
-            'currency'                 => 'required|string|max:10',
-            'currency_symbol'          => 'required|string|max:5',
-            'working_days_per_month'   => 'required|integer|min:1|max:31',
-            'logo'                     => 'nullable|image|max:2048',
+            'company_name' => 'required|string|max:255',
+            'company_email' => 'nullable|email',
+            'company_phone' => 'nullable|string|max:30',
+            'company_address' => 'nullable|string',
+            'currency' => 'required|string|max:10',
+            'currency_symbol' => 'required|string|max:5',
+            'working_days_per_month' => 'required|integer|min:1|max:31',
+            'logo' => 'nullable|image|max:2048',
         ]);
 
         $settings = CompanySetting::firstOrNew([]);
 
         if ($request->hasFile('logo')) {
-            if ($settings->logo) Storage::disk('public')->delete($settings->logo);
+            if ($settings->logo)
+                Storage::disk('public')->delete($settings->logo);
             $validated['logo'] = $request->file('logo')->store('company', 'public');
         }
 
@@ -65,7 +66,7 @@ class SettingsController extends Controller
         }
 
         if ($request->filled('department_id')) {
-            $baseQuery->whereHas('employee', fn ($q) => $q->where('department_id', $request->department_id));
+            $baseQuery->whereHas('employee', fn($q) => $q->where('department_id', $request->department_id));
         }
 
         if ($request->filled('type')) {

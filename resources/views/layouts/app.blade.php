@@ -281,15 +281,30 @@
         <div class="brand">
             <i class="bi bi-cash-stack"></i> PayRoll Manager
         </div>
-
-        <div class="nav-section">Main</div>
+ <div class="nav-section">Main</div>
         <a href="{{ route('dashboard') }}" class="nav-link @active('/')">
             <i class="bi bi-speedometer2"></i> Dashboard
         </a>
+        {{-- Company Master Section - Visible to all authenticated users --}}
+        @if (auth()->check())
+            <div class="nav-section">Company Master</div>
+            <a href="{{ route('company.profile') }}" class="nav-link @active('company/profile*')">
+                <i class="bi bi-building"></i> Company Profile
+            </a>
+            <a href="{{ route('company.departments') }}" class="nav-link @active('company/departments*')">
+                <i class="bi bi-diagram-3"></i> Departments
+            </a>
+            <a href="{{ route('company.designations') }}" class="nav-link @active('company/designations*')">
+                <i class="bi bi-briefcase"></i> Designations
+            </a>
+        @endif
+
+       
 
         {{-- Admin + Super Admin: show all menus --}}
         @if (auth()->check() && auth()->user()->isAdmin())
             <div class="nav-section">Employees</div>
+
             <a href="{{ route('employees.index') }}" class="nav-link @active('employees*')">
                 <i class="bi bi-people"></i> All Employees
             </a>
@@ -410,7 +425,6 @@
             @endif
         @endif
     </nav>
-
 
 
     <!-- Main -->

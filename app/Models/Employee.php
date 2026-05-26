@@ -11,23 +11,47 @@ class Employee extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'employee_code', 'first_name', 'last_name', 'email', 'phone',
-        'nationality', 'country_id', 'date_of_birth', 'gender', 'marital_status',
-        'department_id', 'designation_id', 'joining_date', 'confirmation_date',
-        'resignation_date', 'employment_type', 'status',
-        'bank_name', 'bank_account_number', 'iban', 'wps_personal_number',
-        'custom_fields', 'address', 'photo',
+        'employee_code',
+        'first_name',
+        'last_name',
+        'email',
+        'phone',
+        'company_id',
+        'nationality',
+        'country_id',
+        'date_of_birth',
+        'gender',
+        'marital_status',
+        'department_id',
+        'designation_id',
+        'joining_date',
+        'confirmation_date',
+        'resignation_date',
+        'employment_type',
+        'status',
+        'bank_name',
+        'bank_account_number',
+        'iban',
+        'wps_personal_number',
+        'custom_fields',
+        'address',
+        'photo',
     ];
 
     protected $casts = [
-        'date_of_birth'     => 'date',
-        'joining_date'      => 'date',
+        'date_of_birth' => 'date',
+        'joining_date' => 'date',
         'confirmation_date' => 'date',
-        'resignation_date'  => 'date',
-        'custom_fields'     => 'array',
+        'resignation_date' => 'date',
+        'custom_fields' => 'array',
     ];
 
     // ─── Relationships ────────────────────────────────────────────────────────
+
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
+    }
 
     public function department()
     {
@@ -100,9 +124,9 @@ class Employee extends Model
     {
         return $query->where(function ($q) use ($term) {
             $q->where('first_name', 'like', "%{$term}%")
-              ->orWhere('last_name', 'like', "%{$term}%")
-              ->orWhere('employee_code', 'like', "%{$term}%")
-              ->orWhere('email', 'like', "%{$term}%");
+                ->orWhere('last_name', 'like', "%{$term}%")
+                ->orWhere('employee_code', 'like', "%{$term}%")
+                ->orWhere('email', 'like', "%{$term}%");
         });
     }
 

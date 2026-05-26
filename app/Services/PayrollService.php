@@ -171,7 +171,17 @@ class PayrollService
         $transportAllowance = round($salary->transport_allowance * $attendanceRatio, 2);
         $medicalAllowance   = round($salary->medical_allowance * $attendanceRatio, 2);
         $otherAllowance     = round($salary->other_allowance * $attendanceRatio, 2);
-        $overtimeAmount     = round($overtimeHrs * $salary->overtime_rate_per_hour, 2);
+
+        $company = $employee->company;
+        $companyOvertimeRate = (float) ($company?->overtime_rate ?? 1.5);
+
+        // Overtime uses company overtime rate.
+        // Derive hourly rate from total monthly.
+        $totalMonthlySoFar = $basicSalary + $housingAllowance + $transportAllowance + $medicalAllowance + $otherAllowance;
+        $dailyRate = $workingDays > 0 ? round($totalMonthlySoFar / $workingDays, 2) : 0;
+        $hourlyRate = $dailyRate > 0 ? ($dailyRate / 8) : 0;
+
+        $overtimeAmount = round($overtimeHrs * ($hourlyRate * $companyOvertimeRate), 2);
 
         $grossSalary = $basicSalary + $housingAllowance + $transportAllowance
             + $medicalAllowance + $otherAllowance + $overtimeAmount;

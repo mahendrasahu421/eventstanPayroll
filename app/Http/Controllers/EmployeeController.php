@@ -9,6 +9,7 @@ use App\Models\ActivityLog;
 use App\Http\Requests\EmployeeRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use App\Models\Company;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\EmployeesImport;
 use App\Models\Country;
@@ -17,15 +18,15 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class EmployeeController extends Controller
 {
-    private function payrollCompanyName(): ?string
+    private function payrollCompanyName(Employee $employee = null): ?string
     {
-        return CompanySetting::query()->value('company_name');
+        return $employee?->company?->name ?? CompanySetting::query()->value('company_name');
     }
 
     // Add this new method for AJAX data table
     public function ajaxEmployees(Request $request)
     {
-        $query = Employee::with(['department', 'designation', 'salaryStructure']);
+        $query = Employee::with(['department', 'designation', 'salaryStructure', 'company']);
         
         // Apply filters
         if ($request->filled('search')) {
@@ -43,6 +44,10 @@ class EmployeeController extends Controller
             $query->where('department_id', $request->department);
         }
         
+        if ($request->filled('company_id')) {
+            $query->where('company_id', $request->company_id);
+        }
+
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
@@ -104,25 +109,22 @@ class EmployeeController extends Controller
     }
 
     public function create()
-    {
-        $departments = Department::where('is_active', true)
-            ->orderBy('name')
-            ->get()
-            ->unique('name')
-            ->values();
-
-        $designations = Designation::where('is_active', true)->orderBy('name')->get();
-        $countries = Country::query()->orderBy('name')->get();
-        $companyName = $this->payrollCompanyName();
-
-        return view('employees.create', compact('departments', 'designations', 'countries', 'companyName'));
-    }
+{
+    $departments = Department::where('is_active', true)->orderBy('name')->get();
+    $designations = Designation::where('is_active', true)->orderBy('name')->get();
+    $countries = Country::orderBy('name')->get();
+    $companies = Company::where('is_active', true)->orderBy('company_name')->get(); // Get active companies
+    $companyName = CompanySetting::value('company_name');
+    
+    return view('employees.create', compact('departments', 'designations', 'countries', 'companies', 'companyName'));
+}
 
     public function store(EmployeeRequest $request)
     {
         $validated = $request->validated();
-        $employeeData = [
+$employeeData = [
             'employee_code' => Employee::generateEmployeeCode(),
+            'company_id' => $validated['company_id'],
             'first_name' => $validated['first_name'],
             'last_name' => $validated['last_name'],
             'email' => $validated['email'] ?? null,
@@ -165,8 +167,10 @@ class EmployeeController extends Controller
             'overtime_rate_per_hour' => $validated['overtime_rate_per_hour'] ?? 0,
             'wps_first_transfer_amount' => $validated['wps_first_transfer_amount'] ?? 0,
             'food_deduction' => $validated['food_deduction'] ?? 0,
-            'visa_deduction' => 0,
+            'visa_deduction' => $validated['visa_deduction'] ?? 0,
             'insurance_deduction' => $validated['insurance_deduction'] ?? 0,
+            'advance_payment' => $validated['advance_payment'] ?? 0,
+
             'is_active' => true,
             'effective_from' => now(),
         ];
