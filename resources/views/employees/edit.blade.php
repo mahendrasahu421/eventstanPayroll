@@ -84,7 +84,7 @@
                         <hr class="my-3">
                         <div class="d-flex justify-content-between">
                             <small class="text-muted">Joined Date</small>
-                            <small class="fw-semibold">{{ $employee->joining_date?->format('d M Y') ?? 'N/A' }}</small>
+                            <small class="fw-semibold">{{ $employee->joining_date?->format('d/m/y') ?? 'N/A' }}</small>
                         </div>
                     </div>
                 </div>
@@ -177,9 +177,9 @@
                     <div class="card-body">
                         <div class="row g-4">
                             <div class="col-md-6">
-                                <label class="form-label fw-semibold">Department <span class="text-danger">*</span></label>
+                                <label class="form-label fw-semibold">Department</label>
                                 <select name="department_id" id="departmentSelect" 
-                                        class="form-select @error('department_id') is-invalid @enderror" required>
+                                        class="form-select @error('department_id') is-invalid @enderror">
                                     <option value="">Select Department</option>
                                     @foreach($departments as $dept)
                                         <option value="{{ $dept->id }}" {{ old('department_id', $employee->department_id) == $dept->id ? 'selected' : '' }}>
@@ -191,9 +191,9 @@
                             </div>
 
                             <div class="col-md-6">
-                                <label class="form-label fw-semibold">Designation <span class="text-danger">*</span></label>
+                                <label class="form-label fw-semibold">Designation</label>
                                 <select name="designation_id" id="designationSelect" 
-                                        class="form-select @error('designation_id') is-invalid @enderror" required>
+                                        class="form-select @error('designation_id') is-invalid @enderror">
                                     <option value="">Select Designation</option>
                                     @foreach($designations as $des)
                                         <option value="{{ $des->id }}" 
@@ -207,13 +207,14 @@
                             </div>
 
                             <div class="col-md-6">
-                                <label class="form-label fw-semibold">WPS Number</label>
+                                <label class="form-label fw-semibold">WPS Number <span class="text-danger">*</span></label>
                                 <div class="input-group">
                                     <span class="input-group-text bg-light"><i class="bi bi-bank2"></i></span>
-                                    <input type="text" name="wps_personal_number" class="form-control" 
+                                    <input type="text" name="wps_personal_number" class="form-control @error('wps_personal_number') is-invalid @enderror" 
                                            value="{{ old('wps_personal_number', $employee->wps_personal_number) }}" 
-                                           placeholder="WPS-XXX-XXXXX">
+                                           inputmode="numeric" pattern="\d{14}" maxlength="14" placeholder="14 digit WPS number" required>
                                 </div>
+                                @error('wps_personal_number') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                             </div>
 
                             <div class="col-md-6">
@@ -294,7 +295,7 @@
                                     <tr>
                                         <td><i class="bi bi-file-text me-1 text-primary"></i> {{ ucfirst(str_replace('_', ' ', $doc->document_type)) }}</td>
                                         <td>{{ $doc->document_number ?? '-' }}</td>
-                                        <td>{{ $doc->expiry_date?->format('d M Y') ?? '-' }}</td>
+                                        <td>{{ $doc->expiry_date?->format('d/m/y') ?? '-' }}</td>
                                         <td>
                                             @if($doc->file_path)
                                                 <a href="{{ Storage::url($doc->file_path) }}" target="_blank" class="btn btn-sm btn-outline-primary">

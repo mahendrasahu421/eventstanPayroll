@@ -281,15 +281,30 @@
         <div class="brand">
             <i class="bi bi-cash-stack"></i> PayRoll Manager
         </div>
-
-        <div class="nav-section">Main</div>
+ <div class="nav-section">Main</div>
         <a href="{{ route('dashboard') }}" class="nav-link @active('/')">
             <i class="bi bi-speedometer2"></i> Dashboard
         </a>
+        {{-- Company Master Section - Visible to all authenticated users --}}
+        @if (auth()->check())
+            <div class="nav-section">Company Master</div>
+            <a href="{{ route('company.profile') }}" class="nav-link @active('company/profile*')">
+                <i class="bi bi-building"></i> Company Profile
+            </a>
+            <a href="{{ route('company.departments') }}" class="nav-link @active('company/departments*')">
+                <i class="bi bi-diagram-3"></i> Departments
+            </a>
+            <a href="{{ route('company.designations') }}" class="nav-link @active('company/designations*')">
+                <i class="bi bi-briefcase"></i> Designations
+            </a>
+        @endif
+
+       
 
         {{-- Admin + Super Admin: show all menus --}}
         @if (auth()->check() && auth()->user()->isAdmin())
             <div class="nav-section">Employees</div>
+
             <a href="{{ route('employees.index') }}" class="nav-link @active('employees*')">
                 <i class="bi bi-people"></i> All Employees
             </a>
@@ -328,6 +343,11 @@
                 <i class="bi bi-cash-coin"></i> Advance Payments
             </a>
 
+            <div class="nav-section">Vehicles</div>
+            <a href="{{ route('vehicles.index') }}" class="nav-link @active('vehicles*')">
+                <i class="bi bi-truck-front"></i> Vehicle Master
+            </a>
+
             <div class="nav-section">Documents</div>
             <a href="{{ route('employee-documents') }}" class="nav-link @active('employee-documents')">
                 <i class="bi bi-file-earmark-text"></i> All Employee Documents
@@ -337,12 +357,12 @@
             <a href="{{ route('users.index') }}" class="nav-link">
                 <i class="bi bi-shield-person"></i> Users
             </a>
-            <a href="{{ route('settings') }}" class="nav-link">
+            {{-- <a href="{{ route('settings') }}" class="nav-link">
                 <i class="bi bi-gear"></i> Settings
             </a>
             <a href="{{ route('activity-logs') }}" class="nav-link">
                 <i class="bi bi-journal-text"></i> Activity Logs
-            </a>
+            </a> --}}
         @else
             @if (auth()->user()->canManageEmployees())
                 <div class="nav-section">Employees</div>
@@ -389,13 +409,18 @@
                 <i class="bi bi-cash-coin"></i> Advance Payments
             </a>
 
+            <div class="nav-section">Vehicles</div>
+            <a href="{{ route('vehicles.index') }}" class="nav-link @active('vehicles*')">
+                <i class="bi bi-truck-front"></i> Vehicle Master
+            </a>
+
             <div class="nav-section">Documents</div>
             @if (auth()->check() && auth()->user()->isAdmin())
                 <a href="{{ route('employee-documents') }}" class="nav-link @active('employee-documents')">
                     <i class="bi bi-file-earmark-text"></i> All Employee Documents
                 </a>
             @endif
-
+{{-- 
             @if (auth()->check() && auth()->user()->isAdmin())
                 <div class="nav-section">Administration</div>
                 <a href="{{ route('users.index') }}" class="nav-link">
@@ -407,10 +432,9 @@
                 <a href="{{ route('activity-logs') }}" class="nav-link">
                     <i class="bi bi-journal-text"></i> Activity Logs
                 </a>
-            @endif
+            @endif --}}
         @endif
     </nav>
-
 
 
     <!-- Main -->
@@ -459,6 +483,30 @@
                 'type' => 'error',
                 'title' => 'Error',
                 'message' => session('error'),
+            ];
+        }
+
+        if (session('warning')) {
+            $flashToasts[] = [
+                'type' => 'warning',
+                'title' => 'Warning',
+                'message' => session('warning'),
+            ];
+        }
+
+        if (session('info')) {
+            $flashToasts[] = [
+                'type' => 'info',
+                'title' => 'Info',
+                'message' => session('info'),
+            ];
+        }
+
+        if (session('status')) {
+            $flashToasts[] = [
+                'type' => 'success',
+                'title' => 'Status',
+                'message' => session('status'),
             ];
         }
 

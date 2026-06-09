@@ -30,10 +30,7 @@
     <div class="card border-0 shadow-sm mb-4">
         <div class="card-body">
             <div class="row g-3">
-                <div class="col-md-3">
-                    <label class="form-label fw-semibold">Search</label>
-                    <input type="text" id="searchInput" class="form-control" placeholder="Name, Email, Phone...">
-                </div>
+                
                 <div class="col-md-3">
                     <label class="form-label fw-semibold">Department</label>
                     <select id="departmentFilter" class="form-select">
@@ -51,15 +48,7 @@
                         <option value="inactive">Inactive</option>
                     </select>
                 </div>
-                <div class="col-md-2">
-                    <label class="form-label fw-semibold">Per Page</label>
-                    <select id="perPageFilter" class="form-select">
-                        <option value="10">10</option>
-                        <option value="25" selected>25</option>
-                        <option value="50">50</option>
-                        <option value="100">100</option>
-                    </select>
-                </div>
+                
                 <div class="col-md-2 d-flex align-items-end">
                     <button id="resetFilters" class="btn btn-outline-secondary w-100">
                         <i class="bi bi-arrow-repeat me-1"></i> Reset
@@ -76,14 +65,14 @@
                 <table class="table table-hover align-middle mb-0" id="employeesTable">
                     <thead class="table-light">
                         <tr>
-                            <th style="width: 5%">Photo</th>
-                            <th style="width: 20%">Employee Details</th>
-                            <th style="width: 15%">Department</th>
-                            <th style="width: 15%">Designation</th>
-                            <th style="width: 12%">Basic Salary</th>
-                            <th style="width: 8%">Status</th>
-                            <th style="width: 10%">Join Date</th>
-                            <th style="width: 15%">Actions</th>
+                            <th>Photo</th>
+                            <th>Employee Details</th>
+                            <th>Department</th>
+                            <th>Designation</th>
+                            <th>Basic Salary</th>
+                            <th>Status</th>
+                            <th>Join Date</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -92,149 +81,108 @@
                 </table>
             </div>
         </div>
-        <div class="card-footer bg-transparent">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <span id="tableInfo" class="text-muted small"></span>
-                </div>
-                <div id="paginationLinks">
-                    <!-- Pagination will be loaded here -->
-                </div>
-            </div>
-        </div>
     </div>
 </div>
 
+@push('styles')
+<link href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+<style>
+    .dataTables_wrapper .dataTables_length,
+    .dataTables_wrapper .dataTables_filter,
+    .dataTables_wrapper .dataTables_info,
+    .dataTables_wrapper .dataTables_paginate {
+        margin-bottom: 1rem;
+    }
+    .dataTables_wrapper .dataTables_filter input {
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        padding: 0.375rem 0.75rem;
+        margin-left: 0.5rem;
+    }
+    .dataTables_wrapper .dataTables_length select {
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        padding: 0.375rem 0.75rem;
+        margin: 0 0.5rem;
+    }
+    .rounded-circle {
+        object-fit: cover;
+    }
+    .btn-group .btn {
+        margin: 0 2px;
+    }
+    .badge {
+        padding: 0.35rem 0.65rem;
+        font-weight: 500;
+    }
+</style>
+@endpush
+
 @push('scripts')
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <script>
 $(document).ready(function() {
-    let dataTable = null;
-    
-    // Initialize DataTable
-    function initDataTable() {
-        if (dataTable) {
-            dataTable.destroy();
-        }
-        
-        dataTable = $('#employeesTable').DataTable({
-            processing: true,
-            serverSide: true,
-            responsive: true,
-            ajax: {
-                url: "{{ route('employees.ajax') }}",
-                type: "GET",
-                data: function(d) {
-                    d.search = $('#searchInput').val();
-                    d.department = $('#departmentFilter').val();
-                    d.status = $('#statusFilter').val();
-                    d.per_page = $('#perPageFilter').val();
-                },
-                dataSrc: function(json) {
-                    // Update info and pagination
-                    $('#tableInfo').html(`Showing ${json.from || 0} to ${json.to || 0} of ${json.total || 0} entries`);
-                    $('#paginationLinks').html(json.pagination);
-                    return json.data;
-                }
+    var table = $('#employeesTable').DataTable({
+        processing: true,
+        serverSide: true,
+        ajax: {
+            url: "{{ route('employees.ajax') }}",
+            type: "GET",
+            data: function(d) {
+                d.department = $('#departmentFilter').val();
+                d.status = $('#statusFilter').val();
+                d.per_page = $('#perPageFilter').val();
+                d.search = $('#searchInput').val();
             },
-            columns: [
-                {
-                    data: 'photo',
-                    render: function(data, type, row) {
-                        if (data) {
-                            return `<img src="/storage/${data}" class="rounded-circle" width="40" height="40" style="object-fit: cover;">`;
-                        } else {
-                            const initials = (row.first_name?.charAt(0) || '') + (row.last_name?.charAt(0) || '');
-                            return `<div class="rounded-circle bg-light d-flex align-items-center justify-content-center" style="width:40px;height:40px;font-size:0.8rem;font-weight:600;">${initials || 'N/A'}</div>`;
-                        }
-                    }
-                },
-                {
-                    data: null,
-                    render: function(data, type, row) {
-                        return `
-                            <div class="fw-semibold">${row.full_name}</div>
-                            <small class="text-muted">${row.employee_code}</small>
-                            ${row.email ? `<br><small class="text-muted"><i class="bi bi-envelope"></i> ${row.email}</small>` : ''}
-                        `;
-                    }
-                },
-                {
-                    data: 'department_name',
-                    defaultContent: '-'
-                },
-                {
-                    data: 'designation_name',
-                    defaultContent: '-'
-                },
-                {
-                    data: 'basic_salary',
-                    render: function(data) {
-                        if (!data) return '-';
-                        return new Intl.NumberFormat('en-AE', { style: 'currency', currency: 'AED' }).format(data);
-                    }
-                },
-                {
-                    data: 'status',
-                    render: function(data) {
-                        if (data === 'active') {
-                            return '<span class="badge bg-success">Active</span>';
-                        } else {
-                            return '<span class="badge bg-secondary">Inactive</span>';
-                        }
-                    }
-                },
-                {
-                    data: 'joining_date',
-                    render: function(data) {
-                        if (!data) return '-';
-                        return new Date(data).toLocaleDateString('en-GB');
-                    }
-                },
-                {
-                    data: null,
-                    orderable: false,
-                    render: function(data, type, row) {
-                        return `
-                            <div class="btn-group btn-group-sm">
-                                <a href="/employees/${row.id}" class="btn btn-outline-primary" title="View">
-                                    <i class="bi bi-eye"></i>
-                                </a>
-                                <a href="/employees/${row.id}/edit" class="btn btn-outline-warning" title="Edit">
-                                    <i class="bi bi-pencil"></i>
-                                </a>
-                                <button type="button" class="btn btn-outline-danger" title="Delete" onclick="deleteEmployee(${row.id}, '${row.full_name}')">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            </div>
-                        `;
-                    }
-                }
-            ],
-            language: {
-                processing: '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>',
-                emptyTable: '<div class="text-center py-4"><i class="bi bi-people fs-1 text-muted mb-3 d-block"></i>No employees found. <a href="{{ route("employees.create") }}">Add first one</a>?</div>',
-                zeroRecords: '<div class="text-center py-4"><i class="bi bi-search fs-1 text-muted mb-3 d-block"></i>No matching employees found</div>'
-            },
-            order: [[1, 'asc']],
-            pageLength: 25,
-            lengthMenu: [10, 25, 50, 100],
-            dom: 'rt' // Disable default DataTable search/pagination, we'll use custom
-        });
-    }
-    
-    // Initialize DataTable
-    initDataTable();
-    
+            error: function(xhr, error, thrown) {
+                console.log('Error:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error!',
+                    text: 'Error loading data'
+                });
+            }
+        },
+        columns: [
+            { data: 'photo', name: 'photo', orderable: false, searchable: false },
+            { data: 'employee_details', name: 'employee_details', orderable: false, searchable: false },
+            { data: 'department_name', name: 'department.name' },
+            { data: 'designation_name', name: 'designation.name' },
+            { data: 'basic_salary', name: 'basic_salary' },
+            { data: 'status', name: 'status', orderable: false },
+            { data: 'joining_date', name: 'joining_date' },
+            { data: 'actions', name: 'actions', orderable: false, searchable: false }
+        ],
+        order: [[1, 'asc']],
+        language: {
+            processing: '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>',
+            emptyTable: "No employees found",
+            zeroRecords: "No matching employees found",
+            info: "Showing _START_ to _END_ of _TOTAL_ employees",
+            infoEmpty: "Showing 0 to 0 of 0 employees",
+            infoFiltered: "(filtered from _MAX_ total employees)",
+            search: "Search:",
+            lengthMenu: "Show _MENU_ entries",
+            paginate: {
+                first: "First",
+                last: "Last",
+                next: "Next",
+                previous: "Previous"
+            }
+        },
+        pageLength: 25,
+        lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]]
+    });
+
     // Reload table when filters change
     function reloadTable() {
-        if (dataTable) {
-            dataTable.ajax.reload();
-        }
+        table.ajax.reload();
     }
-    
-    // Debounce function for search input
+
+    // Debounce search input
     let searchTimeout;
     $('#searchInput').on('keyup', function() {
         clearTimeout(searchTimeout);
@@ -242,11 +190,11 @@ $(document).ready(function() {
             reloadTable();
         }, 500);
     });
-    
+
     $('#departmentFilter, #statusFilter, #perPageFilter').on('change', function() {
         reloadTable();
     });
-    
+
     $('#resetFilters').on('click', function() {
         $('#searchInput').val('');
         $('#departmentFilter').val('');
@@ -254,66 +202,57 @@ $(document).ready(function() {
         $('#perPageFilter').val('25');
         reloadTable();
     });
-});
 
-// Delete employee function
-function deleteEmployee(id, name) {
-    if (confirm(`Are you sure you want to delete employee "${name}"?`)) {
-        $.ajax({
-            url: `/employees/${id}`,
-            type: 'DELETE',
-            headers: {
-                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-            },
-            success: function(response) {
-                if (response.success) {
-                    // Reload the table
-                    $('#employeesTable').DataTable().ajax.reload();
-                    // Show success message
-                    showToast('success', response.message || 'Employee deleted successfully');
-                } else {
-                    showToast('error', response.message || 'Error deleting employee');
-                }
-            },
-            error: function(xhr) {
-                showToast('error', 'An error occurred while deleting the employee');
+    // Delete function
+    window.deleteEmployee = function(id, name) {
+        Swal.fire({
+            title: 'Are you sure?',
+            text: `You want to delete employee "${name}"?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Yes, delete it!',
+            cancelButtonText: 'Cancel'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: '/employees/' + id,
+                    type: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Deleted!',
+                                text: response.message,
+                                timer: 2000,
+                                showConfirmButton: false
+                            });
+                            table.ajax.reload();
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error!',
+                                text: response.message
+                            });
+                        }
+                    },
+                    error: function(xhr) {
+                        var message = xhr.responseJSON?.message || 'Could not delete employee';
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error!',
+                            text: message
+                        });
+                    }
+                });
             }
         });
-    }
-}
-
-function showToast(type, message) {
-    // You can implement toast notifications here
-    // For now, use alert
-    alert(message);
-}
+    };
+});
 </script>
-
-<style>
-    .dataTables_processing {
-        position: fixed !important;
-        top: 50% !important;
-        left: 50% !important;
-        transform: translate(-50%, -50%) !important;
-        background: rgba(255,255,255,0.9) !important;
-        padding: 20px !important;
-        border-radius: 8px !important;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1) !important;
-        z-index: 9999 !important;
-    }
-    
-    .table > :not(caption) > * > * {
-        padding: 1rem 0.75rem;
-    }
-    
-    .btn-group .btn {
-        margin: 0 2px;
-    }
-    
-    .badge {
-        padding: 0.35rem 0.65rem;
-        font-weight: 500;
-    }
-</style>
 @endpush
 @endsection

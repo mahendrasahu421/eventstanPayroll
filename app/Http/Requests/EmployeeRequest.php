@@ -16,20 +16,21 @@ class EmployeeRequest extends FormRequest
         $id = $this->route('employee')?->id;
 
         return [
-            // Personal fields
+// Personal fields
             'first_name'         => 'required|string|max:100',
             'last_name'          => 'required|string|max:100',
             'email'              => "nullable|email|unique:employees,email,{$id}",
             'phone'              => 'nullable|string|max:20',
+            'company_id'         => 'required|exists:companies,id',
             'country_id'         => 'nullable|exists:countries,id',
             'nationality'        => 'nullable|string|max:50',
 
             // Optional backward compatibility: allow nationality text, but UI should use country_id
 
-            'wps_personal_number' => 'nullable|string|max:50',
+            'wps_personal_number' => "required|digits:14|unique:employees,wps_personal_number,{$id}",
             'joining_date'       => 'nullable|date',
-            'department_id'      => 'required|exists:departments,id',
-            'designation_id'     => 'required|exists:designations,id',
+            'department_id'      => 'nullable|exists:departments,id',
+            'designation_id'     => 'nullable|exists:designations,id',
             'status'             => 'nullable|in:active,inactive',
             'photo'              => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
 
@@ -50,14 +51,14 @@ class EmployeeRequest extends FormRequest
 
             // Documents (nested arrays)
             'documents' => 'nullable|array',
-            'documents.passport' => 'nullable|array',
-            'documents.passport.number' => 'nullable|string|max:50',
-            'documents.passport.expiry_date' => 'nullable|date',
-            'documents.passport.file' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
-            'documents.emirates_id' => 'nullable|array',
-            'documents.emirates_id.number' => 'nullable|string|max:50',
-            'documents.emirates_id.expiry_date' => 'nullable|date',
-            'documents.emirates_id.file' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
+            'documents.passport' => ($this->isMethod('post') ? 'required' : 'nullable') . '|array',
+            'documents.passport.number' => ($this->isMethod('post') ? 'required' : 'nullable') . '|string|max:50',
+            'documents.passport.expiry_date' => ($this->isMethod('post') ? 'required' : 'nullable') . '|date',
+            'documents.passport.file' => ($this->isMethod('post') ? 'required' : 'nullable') . '|file|mimes:pdf,jpg,jpeg,png|max:5120',
+            'documents.emirates_id' => ($this->isMethod('post') ? 'required' : 'nullable') . '|array',
+            'documents.emirates_id.number' => ($this->isMethod('post') ? 'required' : 'nullable') . '|string|max:50',
+            'documents.emirates_id.expiry_date' => ($this->isMethod('post') ? 'required' : 'nullable') . '|date',
+            'documents.emirates_id.file' => ($this->isMethod('post') ? 'required' : 'nullable') . '|file|mimes:pdf,jpg,jpeg,png|max:5120',
             'documents.labour_card' => 'nullable|array',
             'documents.labour_card.number' => 'nullable|string|max:50',
             'documents.labour_card.expiry_date' => 'nullable|date',

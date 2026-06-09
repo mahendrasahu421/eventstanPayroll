@@ -1,1 +1,89 @@
-@extends('layouts.app')&#10;&#10;@section('title', 'New Advance Payment')&#10;&#10;@section('content')&#10;<div class="d-flex align-items-center gap-3 mb-4">&#10;    <i class="bi bi-plus-circle fs-2 text-success"></i>&#10;    <h2>Record Advance Payment</h2>&#10;</div>&#10;&#10;<form method="POST" action="{{ route('advances.store') }}">&#10;    @csrf&#10;&#10;    <div class="row g-4">&#10;        <div class="col-md-6">&#10;            <label class="form-label">Employee *</label>&#10;            <select name="employee_id" class="form-select @error('employee_id') is-invalid @enderror" required>&#10;                <option value="">Select Employee</option>&#10;                @foreach($employees as $emp)&#10;                    <option value="{{ $emp->id }}" {{ old('employee_id') == $emp->id ? 'selected' : '' }}>{{ $emp->full_name }} ({{ $emp->employee_code }})</option>&#10;                @endforeach&#10;            </select>&#10;            @error('employee_id') <div class="invalid-feedback">{{ $message }}</div> @enderror&#10;        </div>&#10;        &#10;        <div class="col-md-6">&#10;            <label class="form-label">Advance Date *</label>&#10;            <input type="date" name="advance_date" class="form-control @error('advance_date') is-invalid @enderror" value="{{ old('advance_date') }}" required>&#10;            @error('advance_date') <div class="invalid-feedback">{{ $message }}</div> @enderror&#10;        </div>&#10;&#10;        <div class="col-md-4">&#10;            <label class="form-label fw-semibold">Amount *</label>&#10;            <input type="number" name="amount" class="form-control @error('amount') is-invalid @enderror" value="{{ old('amount') }}" step="0.01" min="1" required>&#10;            @error('amount') <div class="invalid-feedback">{{ $message }}</div> @enderror&#10;        </div>&#10;        <div class="col-md-4">&#10;            <label class="form-label">Installment Amount *</label>&#10;            <input type="number" name="installment_amount" class="form-control @error('installment_amount') is-invalid @enderror" value="{{ old('installment_amount') }}" step="0.01" min="1" required>&#10;            @error('installment_amount') <div class="invalid-feedback">{{ $message }}</div> @enderror&#10;        </div>&#10;        <div class="col-md-4">&#10;            <label class="form-label">Total Installments *</label>&#10;            <input type="number" name="total_installments" class="form-control @error('total_installments') is-invalid @enderror" value="{{ old('total_installments') }}" min="1" required>&#10;            @error('total_installments') <div class="invalid-feedback">{{ $message }}</div> @enderror&#10;        </div>&#10;&#10;        <div class="col-md-12">&#10;            <label class="form-label">Reason (Optional)</label>&#10;            <textarea name="reason" class="form-control @error('reason') is-invalid @enderror" rows="2">{{ old('reason') }}</textarea>&#10;            @error('reason') <div class="invalid-feedback">{{ $message }}</div> @enderror&#10;        </div>&#10;    </div>&#10;&#10;    <div class="card mt-4">&#10;        <div class="card-header"><strong>Summary</strong></div>&#10;        <div class="card-body">&#10;            <div class="row text-center">&#10;                <div class="col-md-4"><strong>Total Amount:</strong> <span id="totalAmount">0</span></div>&#10;                <div class="col-md-4"><strong>Monthly Payment:</strong> <span id="monthlyPayment">0</span></div>&#10;                <div class="col-md-4"><strong>Duration:</strong> <span id="duration">0 months</span></div>&#10;            </div>&#10;        </div>&#10;    </div>&#10;&#10;    <div class="d-flex justify-content-end gap-2 mt-4">&#10;        <a href="{{ route('advances.index') }}" class="btn btn-secondary">Cancel</a>&#10;        <button type="submit" class="btn btn-success"><i class="bi bi-check-circle me-1"></i>Record Advance</button>&#10;    </div>&#10;</form>&#10;&#10;<script>&#10;// Auto-calculate summary&#10;document.querySelectorAll('input[name="amount"], input[name="installment_amount"], input[name="total_installments"]').forEach(input => {&#10;    input.addEventListener('input', calculateSummary);&#10;});&#10;&#10;function calculateSummary() {&#10;    const amount = parseFloat(document.querySelector('input[name="amount"]').value) || 0;&#10;    const installment = parseFloat(document.querySelector('input[name="installment_amount"]').value) || 0;&#10;    const totalInstallments = parseInt(document.querySelector('input[name="total_installments"]').value) || 0;&#10;&#10;    document.getElementById('totalAmount').textContent = new Intl.NumberFormat().format(amount);&#10;    document.getElementById('monthlyPayment').textContent = new Intl.NumberFormat().format(installment);&#10;    document.getElementById('duration').textContent = totalInstallments + ' months';&#10;}&#10;</script>&#10;&#10;@endsection
+@extends('layouts.app')
+
+@section('title', 'New Advance Payment')
+
+@section('content')
+<div class="d-flex align-items-center gap-3 mb-4">
+    <i class="bi bi-plus-circle fs-2 text-success"></i>
+    <h2>Record Advance Payment</h2>
+</div>
+
+<form method="POST" action="{{ route('advances.store') }}" enctype="multipart/form-data">
+    @csrf
+
+    <div class="row g-4">
+        <div class="col-md-6">
+            <label class="form-label">Employee *</label>
+            <select name="employee_id" class="form-select @error('employee_id') is-invalid @enderror" required>
+                <option value="">Select Employee</option>
+                @foreach($employees as $emp)
+                    <option value="{{ $emp->id }}" {{ old('employee_id') == $emp->id ? 'selected' : '' }}>{{ $emp->full_name }} ({{ $emp->employee_code }})</option>
+                @endforeach
+            </select>
+            @error('employee_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label">Advance Date *</label>
+            <input type="date" name="advance_date" class="form-control @error('advance_date') is-invalid @enderror" value="{{ old('advance_date') }}" required>
+            @error('advance_date') <div class="invalid-feedback">{{ $message }}</div> @enderror
+        </div>
+
+        <div class="col-md-4">
+            <label class="form-label fw-semibold">Amount *</label>
+            <input type="number" name="amount" class="form-control @error('amount') is-invalid @enderror" value="{{ old('amount') }}" step="0.01" min="1" required>
+            @error('amount') <div class="invalid-feedback">{{ $message }}</div> @enderror
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Installment Amount *</label>
+            <input type="number" name="installment_amount" class="form-control @error('installment_amount') is-invalid @enderror" value="{{ old('installment_amount') }}" step="0.01" min="1" required>
+            @error('installment_amount') <div class="invalid-feedback">{{ $message }}</div> @enderror
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Total Installments *</label>
+            <input type="number" name="total_installments" class="form-control @error('total_installments') is-invalid @enderror" value="{{ old('total_installments') }}" min="1" required>
+            @error('total_installments') <div class="invalid-feedback">{{ $message }}</div> @enderror
+        </div>
+
+        <div class="col-md-8">
+            <label class="form-label">Reason (Optional)</label>
+            <textarea name="reason" class="form-control @error('reason') is-invalid @enderror" rows="2">{{ old('reason') }}</textarea>
+            @error('reason') <div class="invalid-feedback">{{ $message }}</div> @enderror
+        </div>
+
+
+    </div>
+
+    <div class="card mt-4">
+        <div class="card-header"><strong>Summary</strong></div>
+        <div class="card-body">
+            <div class="row text-center">
+                <div class="col-md-4"><strong>Total Amount:</strong> <span id="totalAmount">0</span></div>
+                <div class="col-md-4"><strong>Monthly Payment:</strong> <span id="monthlyPayment">0</span></div>
+                <div class="col-md-4"><strong>Duration:</strong> <span id="duration">0 months</span></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-end gap-2 mt-4">
+        <a href="{{ route('advances.index') }}" class="btn btn-secondary">Cancel</a>
+        <button type="submit" class="btn btn-success"><i class="bi bi-check-circle me-1"></i>Record Advance</button>
+    </div>
+</form>
+
+<script>
+document.querySelectorAll('input[name="amount"], input[name="installment_amount"], input[name="total_installments"]').forEach(input => {
+    input.addEventListener('input', calculateSummary);
+});
+
+function calculateSummary() {
+    const amount = parseFloat(document.querySelector('input[name="amount"]').value) || 0;
+    const installment = parseFloat(document.querySelector('input[name="installment_amount"]').value) || 0;
+    const totalInstallments = parseInt(document.querySelector('input[name="total_installments"]').value) || 0;
+
+    document.getElementById('totalAmount').textContent = new Intl.NumberFormat().format(amount);
+    document.getElementById('monthlyPayment').textContent = new Intl.NumberFormat().format(installment);
+    document.getElementById('duration').textContent = totalInstallments + ' months';
+}
+</script>
+@endsection

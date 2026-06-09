@@ -22,20 +22,21 @@ class SettingsController extends Controller
     public function update(Request $request)
     {
         $validated = $request->validate([
-            'company_name'             => 'required|string|max:255',
-            'company_email'            => 'nullable|email',
-            'company_phone'            => 'nullable|string|max:30',
-            'company_address'          => 'nullable|string',
-            'currency'                 => 'required|string|max:10',
-            'currency_symbol'          => 'required|string|max:5',
-            'working_days_per_month'   => 'required|integer|min:1|max:31',
-            'logo'                     => 'nullable|image|max:2048',
+            'company_name' => 'required|string|max:255',
+            'company_email' => 'nullable|email',
+            'company_phone' => 'nullable|string|max:30',
+            'company_address' => 'nullable|string',
+            'currency' => 'required|string|max:10',
+            'currency_symbol' => 'required|string|max:5',
+            'working_days_per_month' => 'required|integer|min:1|max:31',
+            'logo' => 'nullable|image|max:2048',
         ]);
 
         $settings = CompanySetting::firstOrNew([]);
 
         if ($request->hasFile('logo')) {
-            if ($settings->logo) Storage::disk('public')->delete($settings->logo);
+            if ($settings->logo)
+                Storage::disk('public')->delete($settings->logo);
             $validated['logo'] = $request->file('logo')->store('company', 'public');
         }
 
@@ -65,7 +66,7 @@ class SettingsController extends Controller
         }
 
         if ($request->filled('department_id')) {
-            $baseQuery->whereHas('employee', fn ($q) => $q->where('department_id', $request->department_id));
+            $baseQuery->whereHas('employee', fn($q) => $q->where('department_id', $request->department_id));
         }
 
         if ($request->filled('type')) {
@@ -121,10 +122,10 @@ class SettingsController extends Controller
                         'department_name' => $employee?->department?->name ?? '-',
                         'document_type' => $doc->document_type,
                         'document_number' => $doc->document_number ?? '-',
-                        'issue_date' => $doc->issue_date?->format('d M Y') ?? '-',
-                        'expiry_date' => $doc->expiry_date?->format('d M Y') ?? '-',
+                        'issue_date' => $doc->issue_date?->format('d/m/y') ?? '-',
+                        'expiry_date' => $doc->expiry_date?->format('d/m/y') ?? '-',
                         'status' => $doc->expiry_date ? ($doc->isExpired() ? 'Expired' : ($doc->isExpiringSoon() ? 'Expiring' : 'Valid')) : 'N/A',
-                        'file_url' => $doc->file_path ? Storage::url($doc->file_path) : null,
+                        'file_url' => $doc->file_path ? route('employee-documents.view', $doc) : null,
                         'employee_url' => route('employees.show', $employee),
                     ];
                 });
@@ -159,5 +160,12 @@ class SettingsController extends Controller
             'departments' => $departments,
             'employees' => $employees,
         ]);
+    }
+
+    public function viewEmployeeDocument(EmployeeDocument $document)
+    {
+        abort_unless($document->file_path && Storage::disk('public')->exists($document->file_path), 404);
+
+        return response()->file(Storage::disk('public')->path($document->file_path));
     }
 }

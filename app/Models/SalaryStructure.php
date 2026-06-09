@@ -19,6 +19,7 @@ class SalaryStructure extends Model
         'food_deduction',
         'visa_deduction',
         'insurance_deduction',
+        'advance_payment',
         'is_active',
         'effective_from',
         'effective_to',
