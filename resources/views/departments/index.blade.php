@@ -25,7 +25,7 @@
                 <thead class="table-light">
                     <tr>
                         <th width="50">ID</th>
-                        <th>Code</th>
+              
                         <th>Department Name</th>
                         <th>Description</th>
                         <th>Status</th>
@@ -151,15 +151,27 @@ $(document).ready(function() {
                 });
             }
         },
-        columns: [
-            { data: 'id', name: 'id' },
-            { data: 'code', name: 'code' },
-            { data: 'name', name: 'name' },
-            { data: 'description', name: 'description' },
-            { data: 'status', name: 'is_active', orderable: false },
-            { data: 'created_at', name: 'created_at' },
-            { data: 'actions', name: 'actions', orderable: false, searchable: false }
-        ],
+      columns: [
+    { data: 'id', name: 'id' },
+    { data: 'name', name: 'name' },
+    { data: 'description', name: 'description' },
+    { data: 'status', name: 'is_active', orderable: false },
+    {
+        data: 'created_at',
+        name: 'created_at',
+        render: function(data) {
+            if (!data) return '';
+            
+            let date = new Date(data);
+            let day = String(date.getDate()).padStart(2, '0');
+            let month = String(date.getMonth() + 1).padStart(2, '0');
+            let year = String(date.getFullYear()).slice(-2);
+
+            return `${day}-${month}-${year}`;
+        }
+    },
+    { data: 'actions', name: 'actions', orderable: false, searchable: false }
+],
         order: [[0, 'desc']],
         language: {
             processing: '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>',

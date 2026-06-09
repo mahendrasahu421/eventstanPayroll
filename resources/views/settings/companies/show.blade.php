@@ -157,7 +157,7 @@
                             <small class="text-muted d-block mb-1">
                                 <i class="bi bi-clock-history me-1"></i>Created At
                             </small>
-                            <div class="fw-semibold">{{ $company->created_at->format('d M Y, h:i A') }}</div>
+                            <div class="fw-semibold">{{ $company->created_at->format('d/m/y, h:i A') }}</div>
                         </div>
                     </div>
                     <div class="col-md-6">
@@ -165,7 +165,7 @@
                             <small class="text-muted d-block mb-1">
                                 <i class="bi bi-pencil-square me-1"></i>Last Updated
                             </small>
-                            <div class="fw-semibold">{{ $company->updated_at->format('d M Y, h:i A') }}</div>
+                            <div class="fw-semibold">{{ $company->updated_at->format('d/m/y, h:i A') }}</div>
                         </div>
                     </div>
                 </div>

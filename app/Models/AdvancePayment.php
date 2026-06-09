@@ -13,6 +13,7 @@ class AdvancePayment extends Model
         'employee_id', 'amount', 'advance_date', 'reason',
         'installment_amount', 'total_installments', 'paid_installments',
         'recovered_amount', 'pending_amount', 'status', 'created_by',
+        'receipt_path',
     ];
 
     protected $casts = [

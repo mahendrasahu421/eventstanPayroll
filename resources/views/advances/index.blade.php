@@ -68,6 +68,7 @@
                         <th>Employee</th>
                         <th>Amount</th>
                         <th>Pending</th>
+                        <th>Receipt</th>
                         <th>Status</th>
                         <th class="text-end">Actions</th>
                     </tr>
@@ -78,10 +79,8 @@
                             <td><strong>#{{ $advance->id }}</strong></td>
                             <td>{{ 
                                 $advance->advance_date
-                                    ? 
-                                    	date('Y-m-d', strtotime($advance->advance_date))
-                                    :
-                                    ($advance->created_at ? $advance->created_at->format('Y-m-d') : '-')
+                                    ? date('d/m/y', strtotime($advance->advance_date))
+                                    : ($advance->created_at ? $advance->created_at->format('d/m/y') : '-')
                             }}</td>
                             <td>
                                 {{ $advance->employee?->full_name ?? trim(($advance->employee?->first_name ?? '') . ' ' . ($advance->employee?->last_name ?? '')) }}
@@ -90,7 +89,16 @@
                                 </div>
                             </td>
                             <td>{{ number_format((float)($advance->amount ?? 0), 2) }}</td>
-                            <td>{{ number_format((float)($advance->pending_amount ?? $advance->pending_amount ?? 0), 2) }}</td>
+                            <td>{{ number_format((float)($advance->pending_amount ?? 0), 2) }}</td>
+                            <td>
+                                @if($advance->receipt_path)
+                                    <a href="{{ route('advances.receipt', $advance) }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-receipt"></i> View
+                                    </a>
+                                @else
+                                    <span class="text-muted">-</span>
+                                @endif
+                            </td>
                             <td>
                                 @php
                                     $status = $advance->status;
@@ -122,17 +130,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr>
-                            <td colspan="7" class="text-center py-5 text-muted">
-                                <i class="bi bi-cash-coin fs-1 mb-3 d-block"></i>
-                                No advances found.
-                                <div>
-                                    <a href="{{ route('advances.create') }}" class="btn btn-sm btn-primary mt-2">
-                                        Add first advance
-                                    </a>
-                                </div>
-                            </td>
-                        </tr>
+                        
                     @endforelse
                 </tbody>
             </table>
@@ -147,16 +145,20 @@
 @push('scripts')
 <script>
     $(document).ready(function () {
-        if ($.fn.DataTable) {
+        if ($.fn.DataTable && $('#advancesTable tbody tr').length > 0) {
+            if ($.fn.DataTable.isDataTable('#advancesTable')) {
+                $('#advancesTable').DataTable().destroy();
+            }
+
             $('#advancesTable').DataTable({
                 responsive: true,
-                pageLength: 25,
+                pageLength: 10,
                 order: [[0, 'desc']],
-                columnDefs: [{ targets: -1, orderable: false }]
+                columnDefs: [{ targets: -1, orderable: false }],
+                destroy: true
             });
         }
     });
 </script>
 @endpush
 @endsection
-

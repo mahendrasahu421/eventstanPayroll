@@ -32,7 +32,7 @@
                     @method('PUT')
 
                     <div class="row g-3">
-                        <div class="col-md-12">
+                        <div class="col-md-6">
                             <label for="company_name" class="form-label fw-semibold">
                                 Company Name <span class="text-danger">*</span>
                             </label>
@@ -40,6 +40,19 @@
                                 id="company_name" name="company_name"
                                 value="{{ old('company_name', $company->company_name) }}" required>
                             @error('company_name')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="company_code" class="form-label fw-semibold">
+                                Company Code <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control @error('company_code') is-invalid @enderror"
+                                id="company_code" name="company_code"
+                                value="{{ old('company_code', $company->company_code) }}"
+                                inputmode="numeric" pattern="\d{13}" maxlength="13" required>
+                            @error('company_code')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
@@ -103,19 +116,6 @@
                             @error('working_days_per_month')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
-                        </div>
-
-                        <div class="col-md-6">
-                            <label for="overtime_rate" class="form-label fw-semibold">
-                                <i class="bi bi-clock-history me-1"></i>Overtime Rate
-                            </label>
-                            <input type="number" step="0.01" class="form-control @error('overtime_rate') is-invalid @enderror"
-                                id="overtime_rate" name="overtime_rate"
-                                value="{{ old('overtime_rate', $company->overtime_rate) }}" placeholder="1.5">
-                            @error('overtime_rate')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                            <small class="text-muted">Example: 1.5 = 1.5 times normal hourly rate</small>
                         </div>
 
                         <div class="col-12">
@@ -195,20 +195,15 @@
                 </div>
                 <div class="mb-3">
                     <small class="text-muted d-block">Created at</small>
-                    <div class="fw-semibold">{{ $company->created_at->format('d M Y, h:i A') }}</div>
+                    <div class="fw-semibold">{{ $company->created_at->format('d/m/y, h:i A') }}</div>
                 </div>
                 <div class="mb-3">
                     <small class="text-muted d-block">Last updated</small>
-                    <div class="fw-semibold">{{ $company->updated_at->format('d M Y, h:i A') }}</div>
+                    <div class="fw-semibold">{{ $company->updated_at->format('d/m/y, h:i A') }}</div>
                 </div>
                 
                 <hr>
                 
-                <div class="alert alert-info">
-                    <i class="bi bi-lightbulb"></i>
-                    <strong>Overtime Rate:</strong>
-                    <p class="small mb-0 mt-1">Overtime rate determines how much an employee gets paid for extra hours worked beyond normal working hours.</p>
-                </div>
             </div>
         </div>
     </div>

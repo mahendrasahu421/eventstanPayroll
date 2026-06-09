@@ -319,14 +319,14 @@
             </div>
             <div class="header-right">
                 <div class="slip-badge">SALARY SLIP</div>
-                <div class="gen-date">Generated: {{ now()->format('d M Y') }}</div>
+                <div class="gen-date">Generated: {{ now()->format('d/m/y') }}</div>
             </div>
         </div>
 
         <div class="container">
             <!-- Title with Month -->
             <div class="slip-title">
-                {{ $record->month_label ?? ucfirst($record->payroll_month->format('F Y')) }}
+                {{ $record->month_label ?? (method_exists($record->payroll_month, 'format') ? $record->payroll_month->format('F Y') : \Carbon\Carbon::parse($record->payroll_month)->format('F Y')) }}
             </div>
 
             <!-- Employee Info Grid -->
@@ -349,7 +349,7 @@
                 </div>
                 <div class="info-item">
                     <label>Joining Date</label>
-                    <span>{{ $record->employee->joining_date ? $record->employee->joining_date->format('d M Y') : 'N/A' }}</span>
+                    <span>{{ $record->employee->joining_date ? $record->employee->joining_date->format('d/m/y') : 'N/A' }}</span>
                 </div>
                 <div class="info-item">
                     <label>Attendance</label>

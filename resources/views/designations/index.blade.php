@@ -7,13 +7,13 @@
 <div class="page-header d-flex align-items-center justify-content-between gap-3 flex-wrap mb-4">
     <div>
         <h2 class="mb-0">
-            <i class="bi bi-briefcase text-primary me-2"></i>Designations
+            <i class="bi bi-building text-primary me-2"></i>Designations
         </h2>
-        <div class="text-muted">Manage all designations</div>
+        <div class="text-muted">Manage designation roles</div>
     </div>
-    <div>
+    <div class="d-flex gap-2">
         <a href="{{ route('designations.create') }}" class="btn btn-primary">
-            <i class="bi bi-plus-circle"></i> Add Designation
+            <i class="bi bi-person-plus"></i> Add Designation
         </a>
     </div>
 </div>
@@ -27,20 +27,56 @@
             </div>
         @endif
 
+        {{-- Filters --}}
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <label class="form-label fw-semibold">Search</label>
+                <input type="text" id="searchInput" class="form-control" placeholder="Designation name...">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-semibold">Department</label>
+                <select id="departmentFilter" class="form-select">
+                    <option value="">All Departments</option>
+                    @foreach ($departments as $dept)
+                        <option value="{{ $dept->id }}">{{ $dept->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label fw-semibold">Status</label>
+                <select id="statusFilter" class="form-select">
+                    <option value="">All Status</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label fw-semibold">Per Page</label>
+                <select id="perPageFilter" class="form-select">
+                    <option value="10">10</option>
+                    <option value="25" selected>25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button id="resetFilters" class="btn btn-outline-secondary w-100">
+                    <i class="bi bi-arrow-repeat me-1"></i> Reset
+                </button>
+            </div>
+        </div>
+
         <div class="table-responsive">
             <table class="table table-hover align-middle" id="designationsTable">
                 <thead class="table-light">
                     <tr>
-                        <th width="50">ID</th>
                         <th>Department</th>
-                        <th>Designation Name</th>
+                        <th>Designation</th>
                         <th>Status</th>
-                        <th>Created Date</th>
-                        <th width="100">Actions</th>
+                        <th width="120">Actions</th>
                     </tr>
                 </thead>
-                <tbody>
-                </tbody>
+                <tbody></tbody>
             </table>
         </div>
     </div>
@@ -83,20 +119,22 @@ $(document).ready(function() {
         ajax: {
             url: "{{ route('designations.data') }}",
             type: "GET",
-            error: function(xhr, error, thrown) {
-                console.log('Error:', error);
-                toastr.error('Error loading data');
+            data: function(d) {
+                d.search = $('#searchInput').val();
+                d.department = $('#departmentFilter').val();
+                d.status = $('#statusFilter').val();
+                d.per_page = $('#perPageFilter').val();
             }
         },
         columns: [
-            { data: 'id', name: 'id' },
-            { data: 'department_name', name: 'department.name' },
-            { data: 'name', name: 'name' },
-            { data: 'status', name: 'is_active', orderable: false },
-            { data: 'created_at', name: 'created_at' },
+            { data: 'department_name', name: 'department_name', defaultContent: '-' },
+            { data: 'name', name: 'name', defaultContent: '-' },
+            { data: 'status', name: 'status', orderable: false, searchable: false },
             { data: 'actions', name: 'actions', orderable: false, searchable: false }
         ],
-        order: [[0, 'desc']],
+        order: [[1, 'asc']],
+        pageLength: 25,
+        lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
         language: {
             processing: '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>',
             emptyTable: "No designations found",
@@ -106,18 +144,33 @@ $(document).ready(function() {
             infoFiltered: "(filtered from _MAX_ total designations)",
             search: "Search:",
             lengthMenu: "Show _MENU_ entries",
-            paginate: {
-                first: "First",
-                last: "Last",
-                next: "Next",
-                previous: "Previous"
-            }
-        },
-        pageLength: 10,
-        lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]]
+            paginate: { first: "First", last: "Last", next: "Next", previous: "Previous" }
+        }
     });
 
-    // Delete function
+    function reloadTable() {
+        table.ajax.reload();
+    }
+
+    let searchTimeout;
+    $('#searchInput').on('keyup', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => reloadTable(), 500);
+    });
+
+    $('#departmentFilter, #statusFilter, #perPageFilter').on('change', function() {
+        reloadTable();
+    });
+
+    $('#resetFilters').on('click', function() {
+        $('#searchInput').val('');
+        $('#departmentFilter').val('');
+        $('#statusFilter').val('');
+        $('#perPageFilter').val('25');
+        reloadTable();
+    });
+
+    // Called from controller-generated HTML in `actions` column
     window.deleteDesignation = function(id, name) {
         Swal.fire({
             title: 'Are you sure?',
@@ -131,7 +184,7 @@ $(document).ready(function() {
         }).then((result) => {
             if (result.isConfirmed) {
                 $.ajax({
-                    url: '/master/designations/' + id,
+                    url: `{{ url('master/designations') }}/${id}`,
                     type: 'DELETE',
                     headers: {
                         'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
@@ -147,20 +200,12 @@ $(document).ready(function() {
                             });
                             table.ajax.reload();
                         } else {
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Error!',
-                                text: response.message
-                            });
+                            Swal.fire({ icon: 'error', title: 'Error!', text: response.message });
                         }
                     },
                     error: function(xhr) {
                         var message = xhr.responseJSON?.message || 'Could not delete designation';
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error!',
-                            text: message
-                        });
+                        Swal.fire({ icon: 'error', title: 'Error!', text: message });
                     }
                 });
             }
@@ -170,3 +215,4 @@ $(document).ready(function() {
 </script>
 @endpush
 @endsection
+

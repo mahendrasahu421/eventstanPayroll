@@ -101,11 +101,11 @@
                 </div>
                 <div class="mb-3">
                     <small class="text-muted d-block">Created at</small>
-                    <div class="fw-semibold">{{ $designation->created_at->format('d M Y, h:i A') }}</div>
+                    <div class="fw-semibold">{{ $designation->created_at->format('d/m/y, h:i A') }}</div>
                 </div>
                 <div class="mb-3">
                     <small class="text-muted d-block">Last updated</small>
-                    <div class="fw-semibold">{{ $designation->updated_at->format('d M Y, h:i A') }}</div>
+                    <div class="fw-semibold">{{ $designation->updated_at->format('d/m/y, h:i A') }}</div>
                 </div>
             </div>
         </div>

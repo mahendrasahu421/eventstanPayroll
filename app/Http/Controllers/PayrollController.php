@@ -27,21 +27,76 @@ class PayrollController extends Controller
 
     public function downloadTemplate()
     {
-        // Placeholder to prevent route crash.
-        // Replace with real excel template download later.
-        abort(501, 'downloadTemplate is not implemented yet');
+        // CSV template matching resources/views/payroll/bulk.blade.php expected headers
+        $headers = [
+            'Employee Code',
+            'Employee Name',
+            'Employee ID',
+            'Basic Salary',
+            'Present Days',
+            'Overtime Hours',
+            'Food Deduction',
+            'Other Deduction',
+            'Visa Deduction',
+            'Insurance Deduction',
+            'Advance Deduction',
+        ];
+
+        $sampleRow = [
+            'E001',
+            'John Doe',
+            '',
+            '2500',
+            '30',
+            '0',
+            '0',
+            '0',
+            '0',
+            '0',
+            '0',
+        ];
+
+        $callback = function () use ($headers, $sampleRow) {
+            $out = fopen('php://output', 'w');
+            fputcsv($out, $headers);
+            fputcsv($out, $sampleRow);
+            fclose($out);
+        };
+
+        return response()->streamDownload(
+            $callback,
+            'payroll-bulk-template.csv',
+            [
+                'Content-Type' => 'text/csv; charset=UTF-8',
+            ]
+        );
     }
+
 
     public function customPaymentForm()
     {
         $employees = Employee::query()
+            ->with('salaryStructure')
             ->orderBy('first_name')
             ->orderBy('last_name')
             ->get(['id', 'first_name', 'last_name', 'employee_code']);
 
         $month = now()->format('Y-m');
+        $salaryDetails = $employees->mapWithKeys(function (Employee $employee) {
+            $salary = $employee->salaryStructure;
 
-        return view('payroll.custom-payment', compact('employees', 'month'));
+            return [$employee->id => [
+                'basic_salary' => (float) ($salary?->basic_salary ?? 0),
+                'overtime_rate_per_hour' => (float) ($salary?->overtime_rate_per_hour ?? 0),
+                'wps_first_transfer_amount' => (float) ($salary?->wps_first_transfer_amount ?? 0),
+                'food_deduction' => (float) ($salary?->food_deduction ?? 0),
+                'visa_deduction' => (float) ($salary?->visa_deduction ?? 0),
+                'insurance_deduction' => (float) ($salary?->insurance_deduction ?? 0),
+                'advance_payment' => (float) ($salary?->advance_payment ?? 0),
+            ]];
+        });
+
+        return view('payroll.custom-payment', compact('employees', 'month', 'salaryDetails'));
     }
 
     public function customPayment(Request $request)
@@ -147,7 +202,8 @@ class PayrollController extends Controller
                     'present_days' => $effectivePresentDays,
                     'overtime_hours' => $overtimeHours,
                     'food_deduction' => (float) ($validated['food_deduction'] ?? ($employee->salaryStructure?->food_deduction ?? 0)),
-                    'visa_deduction' => (float) ($validated['visa_deduction'] ?? ($employee->salaryStructure?->visa_deduction ?? 0)),
+                    // Bulk/import ke case me agar excel me visa_deduction diya gaya hai, usi ko prioritize karein.
+                    'visa_deduction' => (array_key_exists('visa_deduction', $validated) ? (float) $validated['visa_deduction'] : (float) ($employee->salaryStructure?->visa_deduction ?? 0)),
                     'insurance_deduction' => (float) ($validated['insurance_deduction'] ?? ($employee->salaryStructure?->insurance_deduction ?? 0)),
                     'advance_deduction' => (float) ($validated['advance_deduction'] ?? $employee->salaryStructure?->advance_payment ?? 0),
                     'other_deduction' => (float) ($validated['other_deduction'] ?? 0),
@@ -226,23 +282,112 @@ class PayrollController extends Controller
 
     public function reports(Request $request)
     {
-        abort(501, 'reports is not implemented yet');
+        $month = $request->query('month') ?: now()->format('Y-m');
+
+        $records = PayrollRecord::query()
+            ->with(['employee.department'])
+            ->where('payroll_month', $month)
+            ->whereIn('status', ['paid', 'processed', 'approved'])
+            ->get();
+
+        $summary = [
+            'employee_count' => $records->count(),
+            'total_gross' => $records->sum(fn ($r) => (float) ($r->gross_salary ?? 0)),
+            'total_deductions' => $records->sum(fn ($r) => (float) ($r->total_deductions ?? 0)),
+            'total_net' => $records->sum(fn ($r) => (float) ($r->net_salary ?? 0)),
+        ];
+
+        $departmentReport = [];
+        foreach ($records as $record) {
+            $dept = $record->employee?->department?->name ?? 'N/A';
+
+            if (!isset($departmentReport[$dept])) {
+                $departmentReport[$dept] = [
+                    'count' => 0,
+                    'total_gross' => 0,
+                    'total_deductions' => 0,
+                    'total_net' => 0,
+                ];
+            }
+
+            $departmentReport[$dept]['count']++;
+            $departmentReport[$dept]['total_gross'] += (float) ($record->gross_salary ?? 0);
+            $departmentReport[$dept]['total_deductions'] += (float) ($record->total_deductions ?? 0);
+            $departmentReport[$dept]['total_net'] += (float) ($record->net_salary ?? 0);
+        }
+
+        ksort($departmentReport);
+
+        return view('payroll.reports', [
+            'month' => $month,
+            'summary' => $summary,
+            'departmentReport' => $departmentReport,
+        ]);
     }
 
     public function exportExcel(Request $request)
     {
-        abort(501, 'exportExcel is not implemented yet');
+        $month = $request->query('month') ?: now()->format('Y-m');
+
+        $exporter = new \App\Exports\PayrollExport($month);
+
+        // maatwebsite/excel v3.x: Excel::download() is an instance method (no static make()).
+        $excel = app(\Maatwebsite\Excel\Excel::class);
+
+        return $excel->download(
+            $exporter,
+            "payroll-report-{$month}.xlsx"
+        );
     }
+
 
     public function wpsReport(Request $request)
     {
-        abort(501, 'wpsReport is not implemented yet');
+        $month = $request->query('month') ?: now()->format('Y-m');
+
+        $records = PayrollRecord::with(['employee'])
+            ->where('payroll_month', $month)
+            ->whereIn('status', ['paid', 'processed', 'approved'])
+            ->get();
+
+        $wpsData = [];
+        foreach ($records as $record) {
+            $employee = $record->employee;
+            if (! $employee) {
+                continue;
+            }
+
+            $iban = (string) ($employee->iban ?? '');
+            if ($iban === '') {
+                continue;
+            }
+
+            $wpsData[] = [
+                'wps_personal_number' => (string) ($employee->wps_personal_number ?? $employee->employee_code ?? ''),
+                'employee_name' => (string) ($employee->full_name ?? trim(($employee->first_name ?? '').' '.($employee->last_name ?? ''))),
+                'iban' => $iban,
+                'net_salary' => (float) ($record->net_salary ?? 0),
+            ];
+        }
+
+        usort($wpsData, function ($a, $b) {
+            return strcmp((string) $a['wps_personal_number'], (string) $b['wps_personal_number']);
+        });
+
+        return view('payroll.wps', [
+            'month' => $month,
+            'wpsData' => $wpsData,
+        ]);
     }
 
     public function exportWPS(Request $request)
     {
-        abort(501, 'exportWPS is not implemented yet');
+        $month = $request->query('month') ?: now()->format('Y-m');
+
+        $exporter = app(\App\Http\Controllers\WPSExportController::class);
+        return $exporter->exportWps($month);
     }
+
 
     /**
      * Bulk payroll processing (called by payroll/bulk page)
@@ -614,11 +759,13 @@ PayrollRecord::updateOrCreate(
     /**
      * Core business logic for payroll calculation
      */
-   private function calculatePayrollData(array $input)
+    private function calculatePayrollData(array $input)
 {
     $employee = Employee::with(['salaryStructure', 'company'])->findOrFail($input['employee_id']);
     $company = $employee->company;
-  
+
+    $payrollMonth = $input['payroll_month'] ?? ($input['month'] ?? now()->format('Y-m'));
+
     // Get values from input or from employee's saved data
     $basicSalary = (float) ($input['basic_salary'] ?? $employee->salaryStructure?->basic_salary ?? 0);
     $totalMonthly = $basicSalary;
@@ -652,23 +799,40 @@ PayrollRecord::updateOrCreate(
     if ($overtimeHours < 0)
         $overtimeHours = 0;
 
-    $companyOvertimeRate = (float) ($company?->overtime_rate ?? 1.5);
+    // Overtime rate priority: salary structure -> company default -> 1.5
+    $companyOvertimeRate = (float) (
+        $employee->salaryStructure?->overtime_rate_per_hour
+            ?? $company?->overtime_rate
+            ?? 1.5
+    );
     $hourlyRate = $dailyRate > 0 ? ($dailyRate / 8) : 0;
-    $overtimeAmount = $overtimeHours * ($hourlyRate * $companyOvertimeRate);
+
+    $overtimeAmount = $overtimeHours * $companyOvertimeRate;
 
     $grossSalary = $daysWorkedAmount + $overtimeAmount;
 
-    // Deductions - Get advance from salary_structure if not provided in input
+    // Deductions - food/insurance from salary structure (or UI override)
     $foodDeduction = (float) ($input['food_deduction'] ?? $employee->salaryStructure?->food_deduction ?? 0);
-    $visaDeduction = (float) ($input['visa_deduction'] ?? $employee->salaryStructure?->visa_deduction ?? 0);
-    $insuranceDeduction = (float) ($input['insurance_deduction'] ?? $employee->salaryStructure?->insurance_deduction ?? 0);
-    
-    // Priority: input value > salary_structure advance_payment
-    $advanceDeduction = (float) ($input['advance_deduction'] ?? $employee->salaryStructure?->advance_payment ?? 0);
-    
-    $otherDeduction = (float) ($input['other_deduction'] ?? 0);
 
-    $totalDeductions = $foodDeduction + $visaDeduction + $insuranceDeduction + $advanceDeduction + $otherDeduction;
+        // Visa deduction: always use installment-based recovery for this payroll month.
+        // UI/input may carry "full Visa charges" in some flows, so never trust input as the monthly deduction.
+        $visaDeduction = $this->calculateVisaInstallmentDeduction($employee, $payrollMonth);
+
+
+
+    $insuranceDeduction = (float) ($input['insurance_deduction'] ?? $employee->salaryStructure?->insurance_deduction ?? 0);
+
+    // Advance should go to others (as you requested) so we do NOT treat salary_structure advance_payment as advance_deduction here.
+    // We compute installment-based advance, then add into other_deduction.
+    $advanceDeduction = $this->calculateAdvanceDeduction($employee, $payrollMonth);
+
+
+    // other_deduction from UI + computed advance installment
+    $otherDeduction = (float) ($input['other_deduction'] ?? 0);
+    $otherDeduction += (float) $advanceDeduction;
+
+    // Recalculate total deductions
+    $totalDeductions = $foodDeduction + $visaDeduction + $insuranceDeduction + $otherDeduction;
     $netSalary = $grossSalary - $totalDeductions;
 
     // WPS splitting
@@ -695,8 +859,53 @@ PayrollRecord::updateOrCreate(
         'food_deduction' => round($foodDeduction, 2),
         'visa_deduction' => round($visaDeduction, 2),
         'insurance_deduction' => round($insuranceDeduction, 2),
-        'advance_deduction' => round($advanceDeduction, 2),
+
+        // advance_deduction column ko blank/0 rakha (advance installment others me add ho chuka)
+        'advance_deduction' => 0,
         'other_deduction' => round($otherDeduction, 2),
+
+        'total_deductions' => round($totalDeductions, 2),
+        'net_salary' => round($netSalary, 2),
+        'wps_first_transfer' => round($wpsFirstTransfer, 2),
+        'wps_second_transfer' => round($wpsSecondTransfer, 2),
+    ];
+
+    // (old code below remains but is unreachable due to return)
+
+
+    $totalDeductions = $foodDeduction + $visaDeduction + $insuranceDeduction + $otherDeduction;
+    $netSalary = $grossSalary - $totalDeductions;
+
+
+    // WPS splitting
+    $wpsFirstTransfer = (float) ($input['wps_first_transfer'] ?? $employee->salaryStructure?->wps_first_transfer_amount ?? 0);
+    if ($wpsFirstTransfer > $netSalary) {
+        $wpsFirstTransfer = $netSalary;
+    }
+    $wpsSecondTransfer = max(0, $netSalary - $wpsFirstTransfer);
+
+    return [
+        'employee_id' => $employee->id,
+        'company_id' => $company?->id,
+        'currency_symbol' => $company?->currency_symbol ?? 'AED',
+        'basic_salary' => round($basicSalary, 2),
+        'total_monthly' => round($totalMonthly, 2),
+        'working_days' => $workingDays,
+        'present_days' => $presentDays,
+        'daily_rate' => round($dailyRate, 2),
+        'days_worked_amount' => round($daysWorkedAmount, 2),
+        'overtime_hours' => $overtimeHours,
+        'overtime_rate' => round($companyOvertimeRate, 2),
+        'overtime_amount' => round($overtimeAmount, 2),
+        'gross_salary' => round($grossSalary, 2),
+        'food_deduction' => round($foodDeduction, 2),
+        'visa_deduction' => round($visaDeduction, 2),
+        'insurance_deduction' => round($insuranceDeduction, 2),
+
+        // advance_deduction column ko blank/0 rakha (advance installment others me add ho chuka)
+        'advance_deduction' => 0,
+        'other_deduction' => round($otherDeduction, 2),
+
         'total_deductions' => round($totalDeductions, 2),
         'net_salary' => round($netSalary, 2),
         'wps_first_transfer' => round($wpsFirstTransfer, 2),
@@ -708,8 +917,42 @@ PayrollRecord::updateOrCreate(
      * Calculate visa installment deduction for a month.
      * Visa is stored as AdvancePayment rows with reason containing 'Visa Charges (Installments)'.
      */
+    private function calculateAdvanceDeduction(Employee $employee, string $month): float
+    {
+        // Advance installments are stored in AdvancePayment rows (not visa-specific).
+        // Deduction is applied month-wise; avoid double deduction by checking AdvanceRecovery.
+        if (!method_exists($employee, 'activeAdvances')) {
+            return 0.0;
+        }
+
+        $total = 0.0;
+
+        foreach ($employee->activeAdvances as $advance) {
+            // Visa-installment advances should NOT be deducted here (handled separately)
+            if (is_string($advance->reason) && str_contains($advance->reason, 'Visa Charges (Installments)')) {
+                continue;
+            }
+
+            $alreadyRecovered = \App\Models\AdvanceRecovery::where('advance_payment_id', $advance->id)
+                ->where('recovery_month', $month)
+                ->exists();
+
+            if ($alreadyRecovered) {
+                continue;
+            }
+
+            $deductible = min((float) $advance->installment_amount, (float) $advance->pending_amount);
+            $total += $deductible;
+        }
+
+        return round($total, 2);
+    }
+
     private function calculateVisaInstallmentDeduction(Employee $employee, string $month): float
     {
+        // Visa is stored as AdvancePayment rows with reason containing 'Visa Charges (Installments)'.
+        // Installment is deducted monthly using AdvanceRecovery.
+
         // Ensure activeAdvances relationship is available.
         if (!method_exists($employee, 'activeAdvances')) {
             return 0.0;
@@ -778,7 +1021,28 @@ PayrollRecord::updateOrCreate(
 
         $payrollRecord->save();
 
-        return redirect()->route('payroll.history')->with('success', 'Payroll status updated successfully.');
+        // Return JSON so AJAX on payroll/history works.
+        return response()->json([
+            'success' => true,
+            'message' => 'Payroll status updated successfully.'
+        ]);
+    }
+
+
+    /**
+     * Delete payroll record (AJAX)
+     */
+    public function destroy(int $recordId)
+    {
+        $payrollRecord = PayrollRecord::query()->findOrFail($recordId);
+
+        // If you implement soft deletes later, replace delete() with forceDelete()/delete() accordingly.
+        $payrollRecord->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Payroll record deleted successfully.'
+        ]);
     }
 }
 

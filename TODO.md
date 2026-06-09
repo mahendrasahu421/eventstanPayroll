@@ -1,11 +1,13 @@
-# TODO - Integrate Gemini AI into Payroll App
+# TODO
 
-- [ ] Add GEMINI_API_KEY and GEMINI_MODEL to .env (and .env.example if present)
-- [ ] Create App\Services\GeminiService.php to call Google Gemini API securely (no hardcoded key)
-- [ ] Add AI controller: App\Http\Controllers\AI\PayrollAIController.php with endpoint to explain a salary slip
-- [ ] Register routes in routes/web.php under authenticated payroll prefix
-- [ ] Update resources/views/payroll/salary-slip.blade.php to add UI (textarea + button) and AJAX call to AI endpoint
-- [ ] Add basic logging/error handling and response rendering in UI
-- [x] Clear config/cache and manually test salary slip AI explanation feature
+## Completed / In Progress
+- [x] Fix Emirates ID expiry date not importing into employee_documents.expiry_date
 
+
+## Steps
+1. Update `app/Imports/EmployeesImport.php` to normalize Excel heading keys (trim/case-insensitive) for Emirates ID expiry columns.
+2. Update `parseDate()` to support Excel numeric date serials (so `Carbon::parse()` failures return correct Y-m-d).
+3. Keep backward compatible support for existing header spellings.
+4. Test bulk import with a sample CSV/XLSX where Emirates expiry previously failed.
+5. Verify in UI/DB that `employee_documents` row for `document_type='emirates_id'` has correct `expiry_date`.
 

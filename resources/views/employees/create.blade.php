@@ -77,7 +77,7 @@
                             </div>
                             <div class="d-flex justify-content-between mb-2">
                                 <small class="text-muted">Date</small>
-                                <small class="fw-semibold">{{ now()->format('d M Y') }}</small>
+                                <small class="fw-semibold">{{ now()->format('d/m/y') }}</small>
                             </div>
                             <div class="d-flex justify-content-between">
                                 <small class="text-muted">Time</small>
@@ -125,10 +125,9 @@
                                 </div>
 
                                 <div class="col-md-6">
-                                    <label class="form-label fw-semibold">Department <span
-                                            class="text-danger">*</span></label>
+                                    <label class="form-label fw-semibold">Department</label>
                                     <select name="department_id" id="departmentSelect"
-                                        class="form-select @error('department_id') is-invalid @enderror" required>
+                                        class="form-select @error('department_id') is-invalid @enderror">
                                         <option value="">Select Department</option>
                                         @foreach ($departments as $dept)
                                             <option value="{{ $dept->id }}"
@@ -142,10 +141,9 @@
                                 </div>
 
                                 <div class="col-md-6">
-                                    <label class="form-label fw-semibold">Designation <span
-                                            class="text-danger">*</span></label>
+                                    <label class="form-label fw-semibold">Designation</label>
                                     <select name="designation_id" id="designationSelect"
-                                        class="form-select @error('designation_id') is-invalid @enderror" required>
+                                        class="form-select @error('designation_id') is-invalid @enderror">
                                         <option value="">Select Designation</option>
                                         @foreach ($designations as $des)
                                             <option value="{{ $des->id }}"
@@ -234,9 +232,12 @@
                         <div class="card-body">
                             <div class="row g-4">
                                 <div class="col-md-6">
-                                    <label class="form-label fw-semibold">WPS Number</label>
-                                    <input type="text" name="wps_personal_number" class="form-control"
-                                        value="{{ old('wps_personal_number') }}" placeholder="WPS-XXX-XXXXX">
+                                    <label class="form-label fw-semibold">WPS Number <span class="text-danger">*</span></label>
+                                    <input type="text" name="wps_personal_number" class="form-control @error('wps_personal_number') is-invalid @enderror"
+                                        value="{{ old('wps_personal_number') }}" inputmode="numeric" pattern="\d{14}" maxlength="14" placeholder="14 digit WPS number" required>
+                                    @error('wps_personal_number')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
                                 </div>
 
                                 <div class="col-md-6">
@@ -266,7 +267,7 @@
                             <h5 class="mb-0 fw-bold">
                                 <i class="bi bi-file-earmark-text me-2 text-primary"></i>
                                 Documents
-                                <small class="text-muted fs-6 fw-normal ms-2">(Optional)</small>
+                                <small class="text-muted fs-6 fw-normal ms-2">(Passport and Emirates ID required)</small>
                             </h5>
                         </div>
                         <div class="card-body">
@@ -281,17 +282,20 @@
                                 @endphp
 
                                 @foreach ($docTypes as $type => $data)
+                                    @php($isRequiredDoc = in_array($type, ['passport', 'emirates_id'], true))
                                     <div class="accordion-item border-0 mb-2">
                                         <h2 class="accordion-header">
-                                            <button class="accordion-button collapsed bg-light rounded p-2" type="button"
+                                            <button class="accordion-button {{ $isRequiredDoc ? '' : 'collapsed' }} bg-light rounded p-2" type="button"
                                                 data-bs-toggle="collapse" data-bs-target="#collapse{{ ucfirst($type) }}"
                                                 style="font-size: 0.9rem;">
                                                 <i class="bi {{ $data['icon'] }} me-2 text-primary"></i>
                                                 {{ $data['label'] }}
+                                                @if($isRequiredDoc)
+                                                    <span class="text-danger ms-1">*</span>
+                                                @endif
                                             </button>
                                         </h2>
-                                        <div id="collapse{{ ucfirst($type) }}" class="accordion-collapse collapse"
-                                            data-bs-parent="#documentsAccordion">
+                                        <div id="collapse{{ ucfirst($type) }}" class="accordion-collapse collapse {{ $isRequiredDoc ? 'show' : '' }}">
                                             <div class="accordion-body p-3">
                                                 <div class="row g-2">
                                                     <div class="col-md-5">
@@ -300,20 +304,20 @@
                                                             name="documents[{{ $type }}][number]"
                                                             class="form-control form-control-sm"
                                                             value="{{ old("documents.$type.number") }}"
-                                                            placeholder="Document number">
+                                                            placeholder="Document number" {{ $isRequiredDoc ? 'required' : '' }}>
                                                     </div>
                                                     <div class="col-md-4">
                                                         <label class="form-label small text-muted mb-1">Expiry Date</label>
                                                         <input type="date"
                                                             name="documents[{{ $type }}][expiry_date]"
                                                             class="form-control form-control-sm"
-                                                            value="{{ old("documents.$type.expiry_date") }}">
+                                                            value="{{ old("documents.$type.expiry_date") }}" {{ $isRequiredDoc ? 'required' : '' }}>
                                                     </div>
                                                     <div class="col-md-3">
                                                         <label class="form-label small text-muted mb-1">Upload</label>
                                                         <input type="file" name="documents[{{ $type }}][file]"
                                                             class="form-control form-control-sm"
-                                                            accept="image/*,application/pdf">
+                                                            accept="image/*,application/pdf" {{ $isRequiredDoc ? 'required' : '' }}>
                                                     </div>
                                                 </div>
                                             </div>
@@ -395,7 +399,7 @@
                                         <span class="input-group-text bg-light currency-symbol-display">AED</span>
                                         <input type="number" name="overtime_rate_per_hour" step="0.01"
                                             class="form-control currency-input"
-                                            value="{{ $companies[0]->overtime_rate }}" min="0">
+                                            value="{{ old('overtime_rate_per_hour', 0) }}" min="0">
                                     </div>
                                 </div>
                                 <div class="col-md-6">

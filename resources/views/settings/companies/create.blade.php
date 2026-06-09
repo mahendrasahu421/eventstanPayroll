@@ -32,7 +32,7 @@
 
                     <div class="row g-3">
                         <!-- Company Name -->
-                        <div class="col-md-12">
+                        <div class="col-md-6">
                             <label for="company_name" class="form-label fw-semibold">
                                 Company Name <span class="text-danger">*</span>
                             </label>
@@ -40,6 +40,19 @@
                                 id="company_name" name="company_name" value="{{ old('company_name') }}" 
                                 placeholder="Enter company name" required>
                             @error('company_name')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <!-- Company Code -->
+                        <div class="col-md-6">
+                            <label for="company_code" class="form-label fw-semibold">
+                                Company Code <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control @error('company_code') is-invalid @enderror"
+                                id="company_code" name="company_code" value="{{ old('company_code') }}"
+                                inputmode="numeric" pattern="\d{13}" maxlength="13" placeholder="13 digit company code" required>
+                            @error('company_code')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
@@ -109,19 +122,49 @@
                             @enderror
                         </div>
 
-                        <!-- Overtime Rate -->
-                        <div class="col-md-3">
-                            <label for="overtime_rate" class="form-label fw-semibold">
-                                <i class="bi bi-clock-history me-1"></i>Overtime Rate
-                            </label>
-                            <input type="number" step="0.01" class="form-control @error('overtime_rate') is-invalid @enderror"
-                                id="overtime_rate" name="overtime_rate" value="{{ old('overtime_rate') }}" 
-                                placeholder="Enter amount">
-                            @error('overtime_rate')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                            <small class="text-muted">Per hour overtime amount (e.g., 50, 75, 100)</small>
+
+
+                        <!-- Company Documents -->
+                        <div class="col-12">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <label class="form-label fw-semibold mb-0">
+                                    <i class="bi bi-file-earmark-text me-2"></i>Company Documents
+                                </label>
+                                <button type="button" class="btn btn-sm btn-outline-primary" id="addDocumentBtn">
+                                    <i class="bi bi-plus-lg"></i> Add Document
+                                </button>
+                            </div>
+
+                            <div id="documentsContainer" class="d-flex flex-column gap-3">
+                                <div class="card border-0 bg-light p-3">
+                                    <div class="row g-3 align-items-end">
+                                        <div class="col-md-4">
+                                            <label class="form-label fw-semibold">Document Label <span class="text-danger">*</span></label>
+                                            <input type="text" class="form-control" name="documents[0][label]" required value="{{ old('documents.0.label') }}" placeholder="e.g., VAT Certificate">
+                                        </div>
+
+                                        <div class="col-md-4">
+                                            <label class="form-label fw-semibold">Upload <span class="text-danger">*</span></label>
+                                            <input type="file" class="form-control" name="documents[0][file]" required accept="application/pdf,image/*">
+                                        </div>
+
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-semibold">Expiry Date <span class="text-danger">*</span></label>
+                                            <input type="date" class="form-control" name="documents[0][expiry_date]" required value="{{ old('documents.0.expiry_date') }}">
+                                        </div>
+
+                                        <div class="col-md-1">
+                                            <button type="button" class="btn btn-sm btn-outline-danger removeDocumentBtn" style="display:none;">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <small class="text-muted d-block mt-2">Upload file + expiry date required to track document validity.</small>
                         </div>
+
 
                         <!-- Company Address -->
                         <div class="col-12">
@@ -196,17 +239,11 @@
                         <li>Company Name is required</li>
                         <li>Currency affects all financial calculations</li>
                         <li>Working days used for daily rate calculation</li>
-                        <li>Overtime Rate: Enter amount per hour (e.g., 50, 75, 100)</li>
+                        
                     </ul>
                 </div>
 
-                <div class="mt-3">
-                    <h6 class="fw-semibold">Example:</h6>
-                    <div class="bg-light p-2 rounded small">
-                        <strong>If overtime rate = 50</strong><br>
-                        10 overtime hours = 500 currency extra
-                    </div>
-                </div>
+               
             </div>
         </div>
     </div>
@@ -247,6 +284,55 @@ uploadZone.addEventListener('mouseleave', function() {
         this.style.backgroundColor = 'transparent';
     }
 });
+
+
+// Documents - add/remove dynamic blocks
+let documentIndex = 1;
+const documentsContainer = document.getElementById('documentsContainer');
+const addDocumentBtn = document.getElementById('addDocumentBtn');
+
+if (addDocumentBtn && documentsContainer) {
+    addDocumentBtn.addEventListener('click', function () {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'card border-0 bg-light p-3';
+
+        wrapper.innerHTML = `
+            <div class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Document Label <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" name="documents[${documentIndex}][label]" required value="" placeholder="e.g., VAT Certificate">
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Upload <span class="text-danger">*</span></label>
+                    <input type="file" class="form-control" name="documents[${documentIndex}][file]" required accept="application/pdf,image/*">
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">Expiry Date <span class="text-danger">*</span></label>
+                    <input type="date" class="form-control" name="documents[${documentIndex}][expiry_date]" required value="">
+                </div>
+
+                <div class="col-md-1">
+                    <button type="button" class="btn btn-sm btn-outline-danger removeDocumentBtn">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+
+        documentsContainer.appendChild(wrapper);
+
+        const removeBtn = wrapper.querySelector('.removeDocumentBtn');
+        if (removeBtn) {
+            removeBtn.addEventListener('click', function () {
+                wrapper.remove();
+            });
+        }
+
+        documentIndex++;
+    });
+}
 </script>
 @endpush
 @endsection

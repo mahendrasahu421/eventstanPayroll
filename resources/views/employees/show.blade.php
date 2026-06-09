@@ -132,7 +132,7 @@
                                 </div>
                                 <div class="d-flex justify-content-between">
                                     <span class="text-muted">Joining Date</span>
-                                    <span class="fw-semibold">{{ $employee->joining_date?->format('d M Y') ?? 'N/A' }}</span>
+                                    <span class="fw-semibold">{{ $employee->joining_date?->format('d/m/y') ?? 'N/A' }}</span>
                                 </div>
                             </div>
                         </div>
@@ -144,7 +144,7 @@
                                 </div>
                                 <div class="d-flex justify-content-between mb-2">
                                     <span class="text-muted">Payroll Company</span>
-                                    <span class="fw-semibold">{{ $employee->custom_fields['payroll_company'] ?? $companyName ?? 'Not configured' }}</span>
+                                    <span class="fw-semibold">{{ $employee->company?->company_name ?? $employee->company?->name ?? $companyName ?? 'Not configured' }}</span>
                                 </div>
                                 @if($employee->custom_fields['insurance_provider'] ?? false)
                                 <div class="d-flex justify-content-between">
@@ -159,6 +159,7 @@
             </div>
 
             {{-- Salary & Compensation Card --}}
+            {{-- Includes installment-based recoveries breakdown for Visa installments (deductions) --}}
             <div class="card border-0 shadow-sm mb-4">
                 <div class="card-header bg-transparent border-0 pt-3 d-flex justify-content-between align-items-center">
                     <h5 class="mb-0 fw-bold"><i class="bi bi-currency-dollar me-2 text-primary"></i>Salary & Compensation</h5>
@@ -173,7 +174,9 @@
                         $food = (float) ($salary->food_deduction ?? 0);
                         $visa = (float) ($salary->visa_deduction ?? 0);
                         $insurance = (float) ($salary->insurance_deduction ?? 0);
-                        $otherDeduction = (float) ($salary->other_deduction ?? 0);
+                        // In salary_structures the “Other Deduction” column may be stored either as
+                        // other_deduction (from older code) OR as other_allowance (from current model/form).
+                        $otherDeduction = (float) ($salary->other_deduction ?? $salary->other_allowance ?? 0);
                         $net = $gross - ($food + $visa + $insurance + $otherDeduction);
                     @endphp
 
@@ -220,9 +223,54 @@
                                         <span class="text-danger">{{ number_format($food) }} AED</span>
                                     </div>
                                     <div class="d-flex justify-content-between mb-2">
-                                        <span class="text-muted">Visa Charges</span>
+                                        <span class="text-muted">Visa Charges (Fixed)</span>
                                         <span class="text-danger">{{ number_format($visa) }} AED</span>
                                     </div>
+
+                                    @php
+                                        $visaInstallments = $employee->advances
+                                            ->where('reason', 'Visa Charges (Installments)')
+                                            ->where('status', 'active')
+                                            ->sortByDesc('id')
+                                            ->values();
+
+                                        $visaInstallmentTotal = $visaInstallments->sum('amount');
+                                        $visaInstallmentPending = $visaInstallments->sum('pending_amount');
+                                    @endphp
+
+                                    @if($visaInstallments->count() > 0)
+                                        <div class="mt-3">
+                                            
+
+                                            <div class="mt-3">
+                                                <small class="text-muted d-block mb-2">Visa Installment Details</small>
+                                                <div class="table-responsive">
+                                                    <table class="table table-sm align-middle">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>#</th>
+                                                                <th>Installment</th>
+                                                                <th>Total</th>
+                                                                <th>Pending</th>
+                                                                <th>Date</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            @foreach($visaInstallments as $vAdv)
+                                                                <tr>
+                                                                    <td>#{{ $vAdv->id }}</td>
+                                                                    <td>{{ number_format((float)($vAdv->installment_amount ?? 0), 2) }} AED</td>
+                                                                    <td>{{ $vAdv->paid_installments ?? 0 }}/{{ $vAdv->total_installments ?? 0 }}</td>
+                                                                    <td>{{ number_format((float)($vAdv->pending_amount ?? 0), 2) }} AED</td>
+                                                                    <td>{{ $vAdv->advance_date?->format('d/m/y') ?? '-' }}</td>
+                                                                </tr>
+                                                            @endforeach
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endif
                                     <div class="d-flex justify-content-between mb-2">
                                         <span class="text-muted">Insurance</span>
                                         <span class="text-danger">{{ number_format($insurance) }} AED</span>
@@ -234,10 +282,10 @@
                                     </div>
                                     @endif
                                     <hr class="my-2">
-                                    <div class="d-flex justify-content-between">
+                                    {{-- <div class="d-flex justify-content-between">
                                         <span class="fw-bold">Net Salary</span>
                                         <span class="fw-bold text-success fs-5">{{ number_format($net) }} AED</span>
-                                    </div>
+                                    </div> --}}
                                 </div>
                             </div>
 
@@ -278,8 +326,13 @@
                     <h5 class="mb-0 fw-bold"><i class="bi bi-cash-stack me-2 text-primary"></i>Advances & Recoveries</h5>
                 </div>
                 <div class="card-body">
-                    @php
-                        $activeAdvances = $employee->advances->where('status', 'active');
+@php
+                        // Advances & Recoveries me sirf normal advances dikhane hain.
+                        // Visa Charges (Installments) wale advances ko exclude karna hai.
+                        $activeAdvances = $employee->advances
+                            ->where('status', 'active')
+                            ->where('reason', '!=', 'Visa Charges (Installments)');
+
                         $advTotal = $activeAdvances->sum('amount');
                         $advPending = $activeAdvances->sum('pending_amount');
                         $totalRecovered = $advTotal - $advPending;
@@ -321,12 +374,15 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($employee->advances->sortByDesc('id')->take(5) as $adv)
+                                @foreach($employee->advances
+                                    ->where('reason', '!=', 'Visa Charges (Installments)')
+                                    ->sortByDesc('id')
+                                    ->take(5) as $adv)
                                 <tr>
                                     <td>#{{ $adv->id }}</td>
                                     <td>{{ number_format($adv->amount) }} AED</td>
                                     <td>{{ $adv->reason ?? '-' }}</td>
-                                    <td>{{ $adv->advance_date->format('d M Y') }}</td>
+                                    <td>{{ $adv->advance_date->format('d/m/y') }}</td>
                                     <td>{{ $adv->paid_installments ?? 0 }}/{{ $adv->total_installments ?? 0 }}</td>
                                     <td>{{ number_format($adv->pending_amount ?? 0) }} AED</td>
                                     <td>
@@ -404,7 +460,7 @@
                                                     <strong>{{ ucfirst(str_replace('_', ' ', $doc->document_type)) }}</strong>
                                                 </td>
                                                 <td>{{ $doc->document_number ?? '-' }}</td>
-                                                <td>{{ $doc->expiry_date?->format('d M Y') ?? '-' }}</td>
+                                                <td>{{ $doc->expiry_date?->format('d/m/y') ?? '-' }}</td>
                                                 <td>
                                                     @if($doc->file_path)
                                                         <a href="{{ Storage::url($doc->file_path) }}" target="_blank" class="btn btn-sm btn-outline-primary">
@@ -454,7 +510,7 @@
                                         <tbody>
                                             @foreach($employee->payrollRecords->sortByDesc('payroll_month')->take(10) as $record)
                                             <tr>
-                                                <td>{{ $record->payroll_month->format('M Y') }}</td>
+                                                <td>{{ method_exists($record->payroll_month, 'format') ? $record->payroll_month->format('M Y') : \Carbon\Carbon::parse($record->payroll_month)->format('M Y') }}</td>
                                                 <td>{{ number_format($record->gross_salary) }} AED</td>
                                                 <td>{{ number_format($record->total_deductions) }} AED</td>
                                                 <td><strong>{{ number_format($record->net_salary) }} AED</strong></td>

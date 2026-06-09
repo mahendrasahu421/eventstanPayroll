@@ -122,10 +122,10 @@ class SettingsController extends Controller
                         'department_name' => $employee?->department?->name ?? '-',
                         'document_type' => $doc->document_type,
                         'document_number' => $doc->document_number ?? '-',
-                        'issue_date' => $doc->issue_date?->format('d M Y') ?? '-',
-                        'expiry_date' => $doc->expiry_date?->format('d M Y') ?? '-',
+                        'issue_date' => $doc->issue_date?->format('d/m/y') ?? '-',
+                        'expiry_date' => $doc->expiry_date?->format('d/m/y') ?? '-',
                         'status' => $doc->expiry_date ? ($doc->isExpired() ? 'Expired' : ($doc->isExpiringSoon() ? 'Expiring' : 'Valid')) : 'N/A',
-                        'file_url' => $doc->file_path ? Storage::url($doc->file_path) : null,
+                        'file_url' => $doc->file_path ? route('employee-documents.view', $doc) : null,
                         'employee_url' => route('employees.show', $employee),
                     ];
                 });
@@ -160,5 +160,12 @@ class SettingsController extends Controller
             'departments' => $departments,
             'employees' => $employees,
         ]);
+    }
+
+    public function viewEmployeeDocument(EmployeeDocument $document)
+    {
+        abort_unless($document->file_path && Storage::disk('public')->exists($document->file_path), 404);
+
+        return response()->file(Storage::disk('public')->path($document->file_path));
     }
 }

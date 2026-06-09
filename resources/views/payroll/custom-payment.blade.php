@@ -38,7 +38,7 @@
                                 <div class="col-md-7">
                                     <label class="form-label fw-semibold">Employee <span
                                             class="text-danger">*</span></label>
-                                    <select name="employee_id"
+                                    <select name="employee_id" id="employeeSelect"
                                         class="form-select @error('employee_id') is-invalid @enderror" required>
                                         <option value="">-- Select Employee --</option>
                                         @foreach ($employees as $employee)
@@ -242,13 +242,10 @@
 
                 <div class="card border-0 shadow-sm">
                     <div class="card-header bg-transparent border-0 pt-3">
-                        <h5 class="mb-0 fw-bold"><i class="bi bi-shield-check me-2 text-info"></i>Payroll Notes</h5>
+                        <h5 class="mb-0 fw-bold"><i class="bi bi-cash-stack me-2 text-info"></i>Salary Details</h5>
                     </div>
-                    <div class="card-body">
-                        <div class="alert alert-info mb-0">
-                            The final payroll record is saved into the same payroll history table, so reports and salary
-                            slips remain consistent.
-                        </div>
+                    <div class="card-body" id="salaryDetailsBox">
+                        <div class="text-muted">Select employee to view salary details.</div>
                     </div>
                 </div>
             </div>
@@ -265,6 +262,33 @@
                 const startDateBox = document.getElementById('startDateBox');
                 const endDateBox = document.getElementById('endDateBox');
                 const paymentType = document.getElementById('paymentType');
+                const employeeSelect = document.getElementById('employeeSelect');
+                const salaryDetailsBox = document.getElementById('salaryDetailsBox');
+                const salaryDetails = @json($salaryDetails ?? []);
+
+                function money(value) {
+                    return new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(value || 0));
+                }
+
+                function updateSalaryDetails() {
+                    const details = salaryDetails[employeeSelect.value];
+                    if (!details) {
+                        salaryDetailsBox.innerHTML = '<div class="text-muted">Select employee to view salary details.</div>';
+                        return;
+                    }
+
+                    salaryDetailsBox.innerHTML = `
+                        <div class="row g-2 small">
+                            <div class="col-7 text-muted">Basic Salary</div><div class="col-5 fw-semibold text-end">AED ${money(details.basic_salary)}</div>
+                            <div class="col-7 text-muted">Overtime Rate</div><div class="col-5 fw-semibold text-end">AED ${money(details.overtime_rate_per_hour)}</div>
+                            <div class="col-7 text-muted">WPS First Transfer</div><div class="col-5 fw-semibold text-end">AED ${money(details.wps_first_transfer_amount)}</div>
+                            <div class="col-7 text-muted">Food Deduction</div><div class="col-5 fw-semibold text-end">AED ${money(details.food_deduction)}</div>
+                            <div class="col-7 text-muted">Visa Deduction</div><div class="col-5 fw-semibold text-end">AED ${money(details.visa_deduction)}</div>
+                            <div class="col-7 text-muted">Insurance Deduction</div><div class="col-5 fw-semibold text-end">AED ${money(details.insurance_deduction)}</div>
+                            <div class="col-7 text-muted">Advance Payment</div><div class="col-5 fw-semibold text-end">AED ${money(details.advance_payment)}</div>
+                        </div>
+                    `;
+                }
 
                 function updateScopeUI() {
                     const isRange = scopeRange.checked;
@@ -276,6 +300,7 @@
 
                 scopeMonth.addEventListener('change', updateScopeUI);
                 scopeRange.addEventListener('change', updateScopeUI);
+                employeeSelect.addEventListener('change', updateSalaryDetails);
 
                 paymentType.addEventListener('change', function() {
                     if (this.value === 'hold') {
@@ -286,6 +311,7 @@
                 });
 
                 updateScopeUI();
+                updateSalaryDetails();
             });
         </script>
     @endpush

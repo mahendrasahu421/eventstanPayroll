@@ -10,6 +10,7 @@ use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\DesignationController;
+use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\Auth\LoginController;
 
 // ── Authentication ────────────────────────────────────────────────────────────
@@ -69,6 +70,8 @@ Route::middleware(['auth'])->group(function () {
     // Employee documents for all employees (admin/super_admin)
     Route::get('/employee-documents', [SettingsController::class, 'employeeDocuments'])
         ->name('employee-documents');
+    Route::get('/employee-documents/{document}/view', [SettingsController::class, 'viewEmployeeDocument'])
+        ->name('employee-documents.view');
     // Dashboard
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
@@ -78,7 +81,15 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/ai/dashboard/latest-slip', [\App\Http\Controllers\AI\DashboardAIController::class, 'explainLatestSlip'])
         ->name('ai.dashboard.latest-slip');
     Route::resource('users', UserController::class);
-    Route::resource('companies', CompanyController::class);
+Route::resource('companies', CompanyController::class);
+
+// Company documents (AJAX)
+Route::get('/companies/{company}/documents', [CompanyController::class, 'documents'])
+    ->name('companies.documents');
+Route::get('/company-documents/{document}/file', [CompanyController::class, 'documentFile'])
+    ->name('companies.documents.file');
+Route::resource('vehicles', VehicleController::class);
+
 
     // ── Employees ─────────────────────────────────────────────────────────────
     Route::prefix('employees')->name('employees.')->group(function () {
@@ -106,6 +117,7 @@ Route::middleware(['auth'])->group(function () {
 
         // Import
         Route::get('/import/form', [EmployeeController::class, 'showImport'])->name('import.form');
+        Route::get('/import/template', [EmployeeController::class, 'downloadImportTemplate'])->name('import.template');
         Route::post('/import/store', [EmployeeController::class, 'import'])->name('import.store');
     });
 
@@ -122,6 +134,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/custom-payment', [PayrollController::class, 'customPayment'])->name('custom-payment.store');
         Route::get('/history', [PayrollController::class, 'history'])->name('history');
         Route::post('/{record}/status', [PayrollController::class, 'updateStatus'])->name('status');
+        Route::delete('/{record}', [PayrollController::class, 'destroy'])->name('destroy');
         Route::get('/{record}/slip', [PayrollController::class, 'salarySlip'])->name('slip');
 
         // AI (Gemini) - Salary slip explanation
@@ -137,6 +150,7 @@ Route::middleware(['auth'])->group(function () {
 
     // ── Advances ──────────────────────────────────────────────────────────────
     Route::resource('advances', AdvanceController::class)->except(['edit', 'update']);
+    Route::get('/advances/{advance}/receipt', [AdvanceController::class, 'receipt'])->name('advances.receipt');
 
     // ── Settings & Users (Admin only) ─────────────────────────────────────────
     Route::middleware(['can:admin'])->group(function () {

@@ -14,7 +14,9 @@ class DesignationController extends Controller
     // List page with DataTable
     public function index()
     {
-        return view('designations.index');
+        $departments = Department::where('is_active', true)->orderBy('name')->get();
+
+        return view('designations.index', compact('departments'));
     }
 
     // AJAX DataTable data

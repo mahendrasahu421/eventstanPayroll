@@ -11,9 +11,16 @@ class Company extends Model
 {
     use HasFactory;
 
+    public function documents()
+    {
+        return $this->hasMany(CompanyDocument::class);
+    }
+
+
     protected $table = 'companies';
 
     protected $fillable = [
+        'company_code',
         'company_name',
         'company_email',
         'company_phone',
@@ -22,13 +29,11 @@ class Company extends Model
         'currency',
         'currency_symbol',
         'working_days_per_month',
-        'overtime_rate',  // Only this
         'is_active'
     ];
 
     protected $casts = [
         'working_days_per_month' => 'integer',
-        'overtime_rate' => 'decimal:2',
         'is_active' => 'boolean'
     ];
 

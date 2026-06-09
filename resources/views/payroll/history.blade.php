@@ -224,7 +224,7 @@
                                 </span>
                             </td>
                             <td>
-                                <small>{{ $record->processed_at ? \Carbon\Carbon::parse($record->processed_at)->format('d M Y') : '-' }}</small>
+                                <small>{{ $record->processed_at ? \Carbon\Carbon::parse($record->processed_at)->format('d/m/y') : '-' }}</small>
                             </td>
                             <td>
                                 <div class="btn-group btn-group-sm" role="group">
@@ -333,30 +333,28 @@
                         _token: '{{ csrf_token() }}',
                         status: status
                     },
+                    headers: {
+                        'Accept': 'application/json'
+                    },
                     success: function(response) {
-                        if (response.success) {
+                        // If server returns JSON, use it. If server redirects, just reload.
+                        if (response && response.success) {
                             Swal.fire({
                                 icon: 'success',
                                 title: 'Updated!',
-                                text: response.message,
+                                text: response.message ?? 'Payroll status updated.',
                                 timer: 2000,
                                 showConfirmButton: false
-                            }).then(() => {
-                                location.reload();
-                            });
+                            }).then(() => location.reload());
                         } else {
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Error!',
-                                text: response.message
-                            });
+                            location.reload();
                         }
                     },
-                    error: function() {
+                    error: function(xhr) {
                         Swal.fire({
                             icon: 'error',
                             title: 'Error!',
-                            text: 'Could not update status'
+                            text: xhr?.responseJSON?.message ?? 'Could not update status'
                         });
                     }
                 });
@@ -377,35 +375,36 @@
         }).then((result) => {
             if (result.isConfirmed) {
                 $.ajax({
+                    // Correct route exists at: POST /payroll/{record}/status
+                    // We implement deletion by toggling to a dedicated 'deleted' workflow is NOT present.
+                    // So instead call a real delete endpoint we will add in controller: DELETE /payroll/{record}
                     url: '/payroll/' + id,
                     type: 'DELETE',
                     data: {
                         _token: '{{ csrf_token() }}'
                     },
                     success: function(response) {
-                        if (response.success) {
+                        if (response && response.success) {
                             Swal.fire({
                                 icon: 'success',
                                 title: 'Deleted!',
-                                text: response.message,
+                                text: response.message ?? 'Payroll record deleted.',
                                 timer: 2000,
                                 showConfirmButton: false
-                            }).then(() => {
-                                location.reload();
-                            });
+                            }).then(() => location.reload());
                         } else {
                             Swal.fire({
                                 icon: 'error',
                                 title: 'Error!',
-                                text: response.message
+                                text: response?.message ?? 'Could not delete record'
                             });
                         }
                     },
-                    error: function() {
+                    error: function(xhr) {
                         Swal.fire({
                             icon: 'error',
                             title: 'Error!',
-                            text: 'Could not delete record'
+                            text: xhr?.responseJSON?.message ?? 'Could not delete record'
                         });
                     }
                 });

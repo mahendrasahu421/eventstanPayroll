@@ -80,16 +80,26 @@
         <h6 class="mb-2"><i class="bi bi-info-circle me-2"></i>Details</h6>
         <div class="card">
             <ul class="list-group list-group-flush">
-                <li class="list-group-item"><strong>Date:</strong> {{ optional($advance->advance_date)->format('d M Y') ?? '-' }}</li>
+                <li class="list-group-item"><strong>Date:</strong> {{ optional($advance->advance_date)->format('d/m/y') ?? '-' }}</li>
                 <li class="list-group-item"><strong>Installment:</strong> {{ number_format($advance->installment_amount) }} x {{ $advance->total_installments }}</li>
 
                 @if($advance->reason)
                     <li class="list-group-item"><strong>Reason:</strong> {{ $advance->reason }}</li>
                 @endif
+                <li class="list-group-item">
+                    <strong>Receipt:</strong>
+                    @if($advance->receipt_path)
+                        <a href="{{ route('advances.receipt', $advance) }}" target="_blank" class="btn btn-sm btn-outline-primary ms-2">
+                            <i class="bi bi-receipt"></i> View Receipt
+                        </a>
+                    @else
+                        <span class="text-muted">-</span>
+                    @endif
+                </li>
 
                 <li class="list-group-item">
                     <strong>Created:</strong>
-                    {{ optional($advance->created_at)->format('d M Y H:i') ?? '-' }}
+                    {{ optional($advance->created_at)->format('d/m/y H:i') ?? '-' }}
                     @if(isset($advance->createdBy?->name)) by {{ $advance->createdBy?->name }} @endif
                 </li>
             </ul>
