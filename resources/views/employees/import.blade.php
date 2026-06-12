@@ -56,8 +56,10 @@ accept=".xlsx,.csv"
                 'date_of_birth' => 'Date of Birth',
                 'department' => 'Department name',
                 'designation' => 'Designation name',
-                'nationality' => 'Nationality',
+                'Nationality' => 'Nationality',
+
                 'wps_personal_number' => 'WPS number (optional)',
+
                 'joining_date' => 'Joining date',
                 'status' => 'active or inactive',
                 'bank_name' => 'Bank name (optional)',
@@ -87,8 +89,53 @@ accept=".xlsx,.csv"
                 'Insurance start date' => 'Insurance start date',
                 'Insurance End date' => 'Insurance End date',
 
-                'Other Deductions' => 'Other Deductions',
+
+        'driving_license_number' => 'driving_license_number',
+        'driving_license_issue_date' => 'driving_license_issue_date',
+        'driving_license_expiry_date' => 'driving_license_expiry_date',
+
+        'passport_number' => 'passport_number',
+        'passport_issue_date' => 'passport_issue_date',
+        'passport_expiry_date' => 'passport_expiry_date',
+
+        'emirates_id_number' => 'emirates_id_number',
+        'emirates_id_issue_date' => 'emirates_id_issue_date',
+        'emirates_id_expiry_date' => 'emirates_id_expiry_date',
+
+        'insurance_provider' => 'insurance_provider',
+        'insurance_policy_number' => 'insurance_policy_number',
+        'insurance_card_number' => 'insurance_card_number',
+        'insurance_start_date' => 'insurance_start_date',
+        'insurance_end_date' => 'insurance_end_date',
+
+        'address' => 'address',
+        'bank_name' => 'bank_name',
+        'bank_account_number' => 'bank_account_number',
+        'iban' => 'iban',
+
+        'other_deductions' => 'other_deductions',
+        'insurance_deduction' => 'insurance_deduction',
+        'total_installments' => 'total_installments',
+        'visa_deduction' => 'visa_deduction',
+        'food_deduction' => 'food_deduction',
+        'wps_first_transfer_amount' => 'wps_first_transfer_amount',
+        'overtime_rate_per_hour' => 'overtime_rate_per_hour',
+        'increment_value' => 'increment_value',
+        'basic_salary' => 'basic_salary',
+        'company_name' => 'company_name',
+        'wps_personal_number' => 'wps_personal_number',
+        'status' => 'status',
+        'nationality' => 'nationality',
+        'designation' => 'designation',
+        'department' => 'department',
+        'joining_date' => 'joining_date',
+        'date_of_birth' => 'date_of_birth',
+        'phone' => 'phone',
+        'email' => 'email',
+        'last_name' => 'last_name',
+        'first_name' => 'first_name',
             ] as $column => $label)
+
 
 
                 <li class="col-md-6">

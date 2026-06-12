@@ -50,18 +50,18 @@
                                 </div>
 
                                 <div class="col-md-8">
-                                    <label class="form-label fw-semibold">Employee <span
-                                            class="text-danger">*</span></label>
+                                    <label class="form-label fw-semibold">Employee <span class="text-danger">*</span></label>
                                     <select name="employee_id" id="employeeSelect"
                                         class="form-select @error('employee_id') is-invalid @enderror" required>
                                         <option value="">-- Select Employee --</option>
                                         @foreach ($employees as $emp)
-                                            <option value="{{ $emp->id }}" data-code="{{ $emp->employee_code }}"
+                                            <option value="{{ $emp->id }}"
+                                                data-code="{{ $emp->employee_code }}"
                                                 data-joining="{{ $emp->joining_date }}"
                                                 data-department="{{ $emp->department?->name }}"
                                                 data-designation="{{ $emp->designation?->name }}"
                                                 data-company="{{ $emp->company?->company_name }}">
-                                                {{ $emp->full_name }} 
+                                                {{ $emp->full_name }}
                                             </option>
                                         @endforeach
                                     </select>
@@ -80,8 +80,8 @@
                                     <label class="form-label">Working Days</label>
                                     <div class="input-group">
                                         <span class="input-group-text bg-light"><i class="bi bi-calendar"></i></span>
-                                        <input type="number" id="workingDaysInput" name="working_days" value="30"
-                                            min="1" max="31" class="form-control">
+                                        <input type="number" id="workingDaysInput" name="working_days"
+                                            value="30" min="1" max="31" class="form-control">
                                     </div>
                                 </div>
 
@@ -103,8 +103,8 @@
                                     <div class="input-group">
                                         <span class="input-group-text bg-light"><i class="bi bi-clock-history"></i></span>
                                         <input type="number" id="overtimeHoursInput" name="overtime_hours"
-                                            class="form-control" value="{{ old('overtime_hours', 0) }}" step="0.5"
-                                            min="0">
+                                            class="form-control" value="{{ old('overtime_hours', 0) }}"
+                                            step="0.5" min="0">
                                     </div>
                                 </div>
                             </div>
@@ -119,8 +119,8 @@
                                     <div class="input-group">
                                         <span class="input-group-text bg-light">AED</span>
                                         <input type="number" id="foodDeductionInput" name="food_deduction"
-                                            class="form-control" value="{{ old('food_deduction', 0) }}" step="0.01"
-                                            min="0">
+                                            class="form-control" value="{{ old('food_deduction', 0) }}"
+                                            step="0.01" min="0">
                                     </div>
                                 </div>
 
@@ -129,8 +129,8 @@
                                     <div class="input-group">
                                         <span class="input-group-text bg-light">AED</span>
                                         <input type="number" id="visaDeductionInput" name="visa_deduction"
-                                            class="form-control" value="{{ old('visa_deduction', 0) }}" step="0.01"
-                                            min="0">
+                                            class="form-control" value="{{ old('visa_deduction', 0) }}"
+                                            step="0.01" min="0">
                                     </div>
                                 </div>
 
@@ -145,14 +145,14 @@
                                 </div>
 
                                 <div class="col-md-4">
-                                    <label class="form-label">Advance</label>
+                                    <label class="form-label fw-semibold">Advance</label>
                                     <div class="input-group">
                                         <span class="input-group-text bg-light">AED</span>
                                         <input type="number" id="advanceDeductionInput" name="advance_deduction"
-                                            class="form-control" value="{{ old('advance_deduction', '') }}"
-                                            step="0.01" min="0" placeholder="Auto calculate">
+                                            class="form-control" value="{{ old('advance_deduction', 0) }}"
+                                            step="0.01" min="0">
                                     </div>
-                                    <small class="text-muted" id="advanceHint">Leave empty for auto calculation</small>
+                                    <small class="text-muted mt-1 d-block" id="advanceHint">Loading...</small>
                                 </div>
 
                                 <div class="col-md-4">
@@ -160,8 +160,8 @@
                                     <div class="input-group">
                                         <span class="input-group-text bg-light">AED</span>
                                         <input type="number" id="otherDeductionInput" name="other_deduction"
-                                            class="form-control" value="{{ old('other_deduction', 0) }}" step="0.01"
-                                            min="0">
+                                            class="form-control" value="{{ old('other_deduction', 0) }}"
+                                            step="0.01" min="0">
                                     </div>
                                 </div>
 
@@ -170,20 +170,11 @@
                                     <div class="input-group">
                                         <span class="input-group-text bg-light">AED</span>
                                         <input type="number" id="wpsFirstTransferInput" name="wps_first_transfer"
-                                            class="form-control" value="{{ old('wps_first_transfer', '') }}"
-                                            step="0.01" min="0" placeholder="Auto">
+                                            class="form-control" value="{{ old('wps_first_transfer', 0) }}"
+                                            step="0.01" min="0">
                                     </div>
                                 </div>
                             </div>
-
-                            {{-- <div class="d-flex justify-content-end gap-2">
-                                <button type="button" class="btn btn-outline-secondary" id="resetBtn">
-                                    <i class="bi bi-arrow-repeat me-1"></i> Reset
-                                </button>
-                                <button type="submit" class="btn btn-primary" id="submitBtn">
-                                    <i class="bi bi-check-lg me-1"></i> Calculate & Save
-                                </button>s
-                            </div> --}}
                         </div>
                     </div>
                 </form>
@@ -205,8 +196,7 @@
             {{-- Right Column - Salary Breakdown --}}
             <div class="col-lg-5">
                 <div class="card border-0 shadow-sm sticky-top" style="top: 20px;">
-                    <div
-                        class="card-header bg-transparent border-0 pt-3 d-flex justify-content-between align-items-center">
+                    <div class="card-header bg-transparent border-0 pt-3 d-flex justify-content-between align-items-center">
                         <h5 class="mb-0 fw-bold">
                             <i class="bi bi-pie-chart me-2 text-primary"></i>Salary Breakdown
                         </h5>
@@ -231,12 +221,10 @@
                                 </div>
                                 <i class="bi bi-person-badge fs-3 opacity-50"></i>
                             </div>
-
                             <div class="mt-2 mb-2">
                                 <small class="opacity-75">Company</small><br>
                                 <small class="fw-semibold" id="empCompany">-</small>
                             </div>
-
                             <div class="row mt-2">
                                 <div class="col-6">
                                     <small class="opacity-75">Department</small><br>
@@ -247,7 +235,6 @@
                                     <small class="fw-semibold" id="empDesig">-</small>
                                 </div>
                             </div>
-
                             <div class="row mt-2">
                                 <div class="col-6">
                                     <small class="opacity-75">Working Days (Monthly)</small><br>
@@ -277,7 +264,7 @@
 
                         {{-- Result --}}
                         <div id="breakdownResult" class="d-none">
-                            {{-- Basic / Increment / Total Monthly --}}
+                            {{-- Basic / Total Monthly --}}
                             <div style="padding: 15px; border-bottom: 1px solid #e9ecef;">
                                 <div class="d-flex justify-content-between mb-2">
                                     <span class="text-muted">Basic Salary</span>
@@ -308,8 +295,8 @@
                             {{-- Overtime --}}
                             <div style="padding: 12px 15px; border-bottom: 1px solid #e9ecef;">
                                 <div class="d-flex justify-content-between">
-                                    <span class="text-muted">Overtime (<span id="overtimeLabel">0h</span> × <span
-                                            id="overtimeRate">0</span>)</span>
+                                    <span class="text-muted">Overtime (<span id="overtimeLabel">0h</span> ×
+                                        <span id="overtimeRate">0</span>)</span>
                                     <span class="fw-semibold text-success" id="overtimeAmount">AED 0</span>
                                 </div>
                             </div>
@@ -380,77 +367,42 @@
 
     @push('scripts')
         <script>
-            $(document).ready(function() {
+            $(document).ready(function () {
                 let previewRequestId = 0;
 
-                // DOM Elements
-                const employeeSelect = $('#employeeSelect');
-                const monthInput = $('#monthInput');
-                const workingDaysInput = $('#workingDaysInput');
-                const presentDaysInput = $('#presentDaysInput');
-                const overtimeHoursInput = $('#overtimeHoursInput');
+                // ── DOM Elements ─────────────────────────────────────────
+                const employeeSelect         = $('#employeeSelect');
+                const monthInput             = $('#monthInput');
+                const workingDaysInput       = $('#workingDaysInput');
+                const presentDaysInput       = $('#presentDaysInput');
+                const overtimeHoursInput     = $('#overtimeHoursInput');
+                const foodDeductionInput     = $('#foodDeductionInput');
+                const visaDeductionInput     = $('#visaDeductionInput');
+                const insuranceDeductionInput= $('#insuranceDeductionInput');
+                const advanceDeductionInput  = $('#advanceDeductionInput');
+                const otherDeductionInput    = $('#otherDeductionInput');
+                const wpsFirstTransferInput  = $('#wpsFirstTransferInput');
 
-                const foodDeductionInput = $('#foodDeductionInput');
-                const visaDeductionInput = $('#visaDeductionInput');
-                const insuranceDeductionInput = $('#insuranceDeductionInput');
-                const advanceDeductionInput = $('#advanceDeductionInput');
-                const otherDeductionInput = $('#otherDeductionInput');
-                const wpsFirstTransferInput = $('#wpsFirstTransferInput');
-
-                const resultBox = $('#breakdownResult');
-                const errorBox = $('#breakdownError');
-                const loadingBox = $('#breakdownLoading');
-                const hintBox = $('#breakdownHint');
+                const resultBox        = $('#breakdownResult');
+                const errorBox         = $('#breakdownError');
+                const loadingBox       = $('#breakdownLoading');
+                const hintBox          = $('#breakdownHint');
                 const employeeInfoCard = $('#employeeInfoCard');
                 const breakdownActions = $('#breakdownActions');
 
-                // Helper functions
+                // ── Helpers ───────────────────────────────────────────────
                 function formatAED(amount) {
                     const num = parseFloat(amount) || 0;
-                    return 'AED ' + num.toLocaleString('en-US', {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2
-                    });
-                }
-
-                function formatAEDNeg(amount) {
-                    const num = parseFloat(amount) || 0;
-                    return 'AED ' + num.toLocaleString('en-US', {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2
-                    });
-                }
-
-                function formatNumber(amount) {
-                    const num = parseFloat(amount) || 0;
-                    return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    return 'AED ' + num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 }
 
                 function setText(id, value) {
-                    $(`#${id}`).text(value);
+                    $('#' + id).text(value);
                 }
 
-                function getPayload(saveStatus = null) {
-                    return {
-                        employee_id: employeeSelect.val(),
-                        month: monthInput.val(),
-                        working_days: workingDaysInput.val() || 30,
-                        present_days: presentDaysInput.val() || 0,
-                        overtime_hours: overtimeHoursInput.val() || 0,
-                        food_deduction: foodDeductionInput.val() || 0,
-                        visa_deduction: visaDeductionInput.val() || 0,
-                        insurance_deduction: insuranceDeductionInput.val() || 0,
-                        advance_deduction: advanceDeductionInput.val() || '',
-                        other_deduction: otherDeductionInput.val() || 0,
-                        wps_first_transfer: wpsFirstTransferInput.val() || '',
-                        save_status: saveStatus
-                    };
-                }
-
-                // Debounce helper to prevent excessive API calls while typing
                 function debounce(func, wait) {
                     let timeout;
-                    return function(...args) {
+                    return function (...args) {
                         clearTimeout(timeout);
                         timeout = setTimeout(() => func.apply(this, args), wait);
                     };
@@ -458,97 +410,105 @@
 
                 const debouncedFetchPreview = debounce(fetchPreview, 400);
 
-                // Load employee defaults when employee changes
-async function loadEmployeeDefaults() {
-    const employeeId = employeeSelect.val();
-    if (!employeeId) return;
-
-    try {
-        const response = await fetch(
-            `{{ route('payroll.employee-defaults', '') }}/${employeeId}`, {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                // ── getPayload ────────────────────────────────────────────
+                // advance_deduction: value hai toh wo bhejo, blank/0 toh null (DB se auto)
+                function getPayload(saveStatus = null) {
+                    const advVal = advanceDeductionInput.val();
+                    return {
+                        employee_id:         employeeSelect.val(),
+                        month:               monthInput.val(),
+                        working_days:        workingDaysInput.val() || 30,
+                        present_days:        presentDaysInput.val() || 0,
+                        overtime_hours:      overtimeHoursInput.val() || 0,
+                        food_deduction:      foodDeductionInput.val() || 0,
+                        visa_deduction:      visaDeductionInput.val() || 0,
+                        insurance_deduction: insuranceDeductionInput.val() || 0,
+                        advance_deduction:   (advVal !== '' && advVal !== null)
+                                                ? parseFloat(advVal)
+                                                : null,
+                        other_deduction:     otherDeductionInput.val() || 0,
+                        wps_first_transfer:  wpsFirstTransferInput.val() || 0,
+                        save_status:         saveStatus,
+                    };
                 }
-            });
 
-        const result = await response.json();
-        if (result.success && result.data) {
-            const data = result.data;
-            console.log('Employee defaults loaded:', data);
-            
-            // Set form values
-            if (data.food_deduction !== undefined) foodDeductionInput.val(data.food_deduction);
-            if (data.visa_deduction !== undefined) visaDeductionInput.val(data.visa_deduction);
-            if (data.insurance_deduction !== undefined) insuranceDeductionInput.val(data.insurance_deduction);
-            
-            // Set advance deduction - show it prominently
-            if (data.advance_deduction !== undefined && data.advance_deduction > 0) {
-                advanceDeductionInput.val(data.advance_deduction);
-                $('#advanceHint').html(`<span class="text-primary fw-bold">Auto calculated: AED ${data.advance_deduction.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>`);
-                // Add visual indicator
-                advanceDeductionInput.addClass('bg-light');
-            } else {
-                advanceDeductionInput.val('');
-                $('#advanceHint').html('No advance deduction for this month');
-                advanceDeductionInput.removeClass('bg-light');
-            }
-            
-            if (data.other_deduction !== undefined) otherDeductionInput.val(data.other_deduction);
-            if (data.wps_first_transfer !== undefined) wpsFirstTransferInput.val(data.wps_first_transfer);
-            if (data.working_days_per_month !== undefined) workingDaysInput.val(data.working_days_per_month);
-            if (data.present_days !== undefined) presentDaysInput.val(data.present_days);
-            if (data.overtime_hours !== undefined) overtimeHoursInput.val(data.overtime_hours);
+                // ── loadEmployeeDefaults ──────────────────────────────────
+                async function loadEmployeeDefaults() {
+                    const employeeId = employeeSelect.val();
+                    if (!employeeId) return;
 
-            // Update employee info card with total monthly salary
-            const selectedOption = employeeSelect.find('option:selected');
-            const companyName = selectedOption.data('company') || data.company?.name || '-';
+                    // Loading state
+                    $('#advanceHint').html('<small class="text-muted"><i class="bi bi-hourglass-split"></i> Loading...</small>');
 
-            $('#empName').text(selectedOption.text().split(' (')[0]);
-            $('#empCode').text(selectedOption.data('code') || '-');
-            $('#empCompany').text(companyName);
-            $('#empDept').text(selectedOption.data('department') || '-');
-            $('#empDesig').text(selectedOption.data('designation') || '-');
-            $('#empWorkingDays').text(data.working_days_per_month ?? '-');
-            $('#empOvertimeRate').text(data.overtime_rate_per_hour ?? '-');
-            
-            // Show total monthly salary if available
-            if (data.total_monthly) {
-                $('#totalMonthlyPreview').text(formatAED(data.total_monthly));
-            }
+                    try {
+                        const response = await fetch(
+                            `{{ route('payroll.employee-defaults', '') }}/${employeeId}`, {
+                                method: 'GET',
+                                headers: {
+                                    'Accept': 'application/json',
+                                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                                }
+                            });
 
-            employeeInfoCard.removeClass('d-none');
-            
-            // If there's an advance deduction, highlight it in the UI
-            if (data.advance_deduction > 0) {
-                // You can add a visual notification or tooltip
-                const advanceField = $('#advanceDeductionInput').closest('.col-md-4');
-                advanceField.addClass('has-advance');
-                advanceField.find('label').addClass('text-primary fw-bold');
-                
-                // Add a small badge to show this is auto-calculated
-                if (!$('#advanceBadge').length) {
-                    advanceField.find('.input-group').after(
-                        '<small id="advanceBadge" class="text-success d-block mt-1">' +
-                        '<i class="bi bi-info-circle-fill"></i> This amount will be deducted automatically' +
-                        '</small>'
-                    );
+                        const result = await response.json();
+
+                        if (!result.success || !result.data) return;
+
+                        const data = result.data;
+
+                        // ✅ Sab fields prefill karo
+                        if (data.food_deduction         !== undefined) foodDeductionInput.val(data.food_deduction);
+                        if (data.visa_deduction          !== undefined) visaDeductionInput.val(data.visa_deduction);
+                        if (data.insurance_deduction     !== undefined) insuranceDeductionInput.val(data.insurance_deduction);
+                        if (data.other_deduction         !== undefined) otherDeductionInput.val(data.other_deduction);
+                        if (data.wps_first_transfer      !== undefined) wpsFirstTransferInput.val(data.wps_first_transfer);
+                        if (data.working_days_per_month  !== undefined) workingDaysInput.val(data.working_days_per_month);
+                        if (data.present_days            !== undefined) presentDaysInput.val(data.present_days);
+                        if (data.overtime_hours          !== undefined) overtimeHoursInput.val(data.overtime_hours);
+
+                        // ✅ Advance — set karo, blank mat karo
+                        const adv = parseFloat(data.advance_deduction) || 0;
+                        advanceDeductionInput.val(adv);
+
+                        if (adv > 0) {
+                            $('#advanceHint').html(
+                                `<span class="text-success">
+                                    <i class="bi bi-check-circle-fill"></i>
+                                    Auto calculated: AED ${adv.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    <small class="text-muted">(editable)</small>
+                                </span>`
+                            );
+                            advanceDeductionInput.addClass('border-success');
+                        } else {
+                            $('#advanceHint').html('<small class="text-muted">No advance this month</small>');
+                            advanceDeductionInput.removeClass('border-success');
+                        }
+
+                        // Employee info card
+                        const opt = employeeSelect.find('option:selected');
+                        $('#empName').text(opt.text().trim());
+                        $('#empCode').text(opt.data('code') || '-');
+                        $('#empCompany').text(opt.data('company') || '-');
+                        $('#empDept').text(opt.data('department') || '-');
+                        $('#empDesig').text(opt.data('designation') || '-');
+                        $('#empWorkingDays').text(data.working_days_per_month ?? '-');
+                        $('#empOvertimeRate').text(data.overtime_rate_per_hour ?? '-');
+
+                        employeeInfoCard.removeClass('d-none');
+
+                        // ✅ Prefill hone ke baad turant preview fetch karo
+                        await fetchPreview();
+
+                    } catch (error) {
+                        console.error('Error loading employee defaults:', error);
+                        $('#advanceHint').html('<span class="text-danger">Error loading details</span>');
+                    }
                 }
-            } else {
-                $('#advanceBadge').remove();
-            }
-        }
-    } catch (error) {
-        console.error('Error loading employee defaults:', error);
-        $('#advanceHint').html('<span class="text-danger">Error loading advance details</span>');
-    }
-}
 
-                // Fetch preview breakdown
+                // ── fetchPreview ──────────────────────────────────────────
                 async function fetchPreview() {
                     const employeeId = employeeSelect.val();
-                    const month = monthInput.val();
+                    const month      = monthInput.val();
 
                     if (!employeeId || !month) {
                         resultBox.addClass('d-none');
@@ -571,45 +531,42 @@ async function loadEmployeeDefaults() {
                             headers: {
                                 'Content-Type': 'application/json',
                                 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
-                                'Accept': 'application/json'
+                                'Accept': 'application/json',
                             },
-                            body: JSON.stringify(getPayload(null))
+                            body: JSON.stringify(getPayload(null)),
                         });
 
                         const result = await response.json();
-
                         if (requestId !== previewRequestId) return;
 
-                        if (!result.success) {
-                            throw new Error(result.message || 'Failed to calculate breakdown');
-                        }
+                        if (!result.success) throw new Error(result.message || 'Failed to calculate');
 
                         const d = result.data;
 
-                        // Update breakdown display
-                        setText('basicSalary', formatAED(d.basic_salary));
-                        setText('incrementAmount', formatAED(d.increment_amount));
-                        setText('totalMonthly', formatAED(d.total_monthly));
-                        setText('dailyRate', formatAED(d.daily_rate));
-                        setText('daysWorkedLabel', `${d.present_days || 0}/${d.working_days || 30}`);
-                        setText('daysWorkedAmount', formatAED(d.days_worked_amount));
-                        setText('overtimeLabel', d.overtime_hours || 0);
-                        setText('overtimeRate', d.overtime_rate || 0);
-                        setText('overtimeAmount', formatAED(d.overtime_amount));
+                        // ✅ Breakdown update
+                        setText('basicSalary',            formatAED(d.basic_salary));
+                        setText('incrementAmount',         formatAED(d.increment_amount ?? 0));
+                        setText('totalMonthly',            formatAED(d.total_monthly));
+                        setText('dailyRate',               formatAED(d.daily_rate));
+                        setText('daysWorkedLabel',         `${d.present_days || 0}/${d.working_days || 30}`);
+                        setText('daysWorkedAmount',        formatAED(d.days_worked_amount));
+                        setText('overtimeLabel',           d.overtime_hours || 0);
+                        setText('overtimeRate',            d.overtime_rate || 0);
+                        setText('overtimeAmount',          formatAED(d.overtime_amount));
+                        setText('grossSalary',             formatAED(d.gross_salary));
+                        setText('foodDeductionDisplay',    formatAED(d.food_deduction));
+                        setText('visaDeductionDisplay',    formatAED(d.visa_deduction));
+                        setText('insuranceDeductionDisplay', formatAED(d.insurance_deduction));
+                        setText('advanceDeductionDisplay', formatAED(d.advance_deduction));
+                        setText('otherDeductionDisplay',   formatAED(d.other_deduction));
+                        setText('totalDeductions',         formatAED(d.total_deductions));
+                        setText('netSalary',               formatAED(d.net_salary));
+                        setText('wpsFirstTransfer',        formatAED(d.wps_first_transfer));
+                        setText('wpsSecondTransfer',       formatAED(d.wps_second_transfer));
 
-                        // Update company+overtime summary fields as well (from calculation)
+                        // Company info from calculation
                         $('#empWorkingDays').text(d.working_days ?? '-');
                         $('#empOvertimeRate').text(d.overtime_rate ?? '-');
-                        setText('grossSalary', formatAED(d.gross_salary));
-                        setText('foodDeductionDisplay', formatAEDNeg(d.food_deduction));
-                        setText('visaDeductionDisplay', formatAEDNeg(d.visa_deduction));
-                        setText('insuranceDeductionDisplay', formatAEDNeg(d.insurance_deduction));
-                        setText('advanceDeductionDisplay', formatAEDNeg(d.advance_deduction));
-                        setText('otherDeductionDisplay', formatAEDNeg(d.other_deduction));
-                        setText('totalDeductions', formatAEDNeg(d.total_deductions));
-                        setText('netSalary', formatAED(d.net_salary));
-                        setText('wpsFirstTransfer', formatAED(d.wps_first_transfer));
-                        setText('wpsSecondTransfer', formatAEDNeg(d.wps_second_transfer));
 
                         resultBox.removeClass('d-none');
                         breakdownActions.removeClass('d-none');
@@ -623,84 +580,81 @@ async function loadEmployeeDefaults() {
                     }
                 }
 
-                // Submit form with status
+                // ── Form Submit ───────────────────────────────────────────
                 function submitForm(status) {
                     if (!employeeSelect.val() || !monthInput.val()) {
                         alert('Please select employee and month');
                         return;
                     }
-
                     $('#saveStatusInput').val(status);
                     $('#payrollForm').submit();
                 }
 
-                // Reset form
+                // ── Reset ─────────────────────────────────────────────────
                 function resetForm() {
-                    employeeSelect.val('').trigger('change');
                     presentDaysInput.val(30);
                     overtimeHoursInput.val(0);
                     foodDeductionInput.val(0);
                     visaDeductionInput.val(0);
                     insuranceDeductionInput.val(0);
-                    advanceDeductionInput.val('');
+                    advanceDeductionInput.val(0);
                     otherDeductionInput.val(0);
-                    wpsFirstTransferInput.val('');
+                    wpsFirstTransferInput.val(0);
+                    workingDaysInput.val(30);
 
-                    $('#empCompany').text('-');
-                    $('#empWorkingDays').text('-');
-                    $('#empOvertimeRate').text('-');
+                    $('#advanceHint').html('<small class="text-muted">Loading...</small>');
+                    advanceDeductionInput.removeClass('border-success');
 
                     resultBox.addClass('d-none');
                     hintBox.removeClass('d-none');
                     employeeInfoCard.addClass('d-none');
                     breakdownActions.addClass('d-none');
+                    errorBox.addClass('d-none');
                 }
 
-                // Event Listeners
-                employeeSelect.on('change', function() {
+                // ── Event Listeners ───────────────────────────────────────
+
+                // Employee change — prefill + preview
+                employeeSelect.on('change', function () {
                     if ($(this).val()) {
-                        loadEmployeeDefaults().then(() => {
-                            fetchPreview();
-                        });
+                        resetForm();
+                        loadEmployeeDefaults(); // fetchPreview is called inside after prefill
                     } else {
                         resetForm();
                     }
                 });
 
-                monthInput.on('change', fetchPreview);
-                presentDaysInput.on('input', debouncedFetchPreview);
-                overtimeHoursInput.on('input', debouncedFetchPreview);
-                foodDeductionInput.on('input', debouncedFetchPreview);
-                visaDeductionInput.on('input', debouncedFetchPreview);
-                insuranceDeductionInput.on('input', debouncedFetchPreview);
-                advanceDeductionInput.on('input', debouncedFetchPreview);
-                otherDeductionInput.on('input', debouncedFetchPreview);
-                wpsFirstTransferInput.on('input', debouncedFetchPreview);
-
-                // Keep working_days from company defaults (do NOT overwrite with calendar days)
-                monthInput.on('change', function() {
-                    const maxWorkingDays = parseFloat(workingDaysInput.val()) || 30;
-                    const currentPresent = parseFloat(presentDaysInput.val()) || 0;
-
-                    if (currentPresent > maxWorkingDays) {
-                        presentDaysInput.val(maxWorkingDays);
+                // Month change
+                monthInput.on('change', function () {
+                    if (employeeSelect.val()) {
+                        loadEmployeeDefaults();
                     }
-
-                    fetchPreview();
                 });
 
-                $('#resetBtn').on('click', resetForm);
+                // ✅ Koi bhi deduction/attendance field badlo — turant preview update ho
+                const liveFields = [
+                    presentDaysInput,
+                    overtimeHoursInput,
+                    workingDaysInput,
+                    foodDeductionInput,
+                    visaDeductionInput,
+                    insuranceDeductionInput,
+                    advanceDeductionInput,
+                    otherDeductionInput,
+                    wpsFirstTransferInput,
+                ];
+
+                liveFields.forEach(function (field) {
+                    field.on('input change', debouncedFetchPreview);
+                });
+
+                // Save buttons
                 $('#saveDraftBtn').on('click', () => submitForm('draft'));
-                $('#savePaidBtn').on('click', () => submitForm('paid'));
+                $('#savePaidBtn').on('click',  () => submitForm('paid'));
 
-                // Trigger month change to set working days
-                if (monthInput.val()) {
-                    monthInput.trigger('change');
-                }
-
-                // Initial check if employee is pre-selected
+                // ── Init ──────────────────────────────────────────────────
                 if (employeeSelect.val()) {
-                    loadEmployeeDefaults().then(() => fetchPreview());
+                    loadEmployeeDefaults();
                 }
             });
         </script>
@@ -711,6 +665,9 @@ async function loadEmployeeDefaults() {
             position: sticky;
             top: 20px;
             z-index: 100;
+        }
+        .border-success {
+            border-color: #198754 !important;
         }
     </style>
 @endsection

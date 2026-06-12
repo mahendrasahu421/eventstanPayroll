@@ -50,8 +50,17 @@ return new class extends Migration
             $table->string('iban')->nullable();
             $table->string('wps_personal_number')->nullable();
             $table->json('custom_fields')->nullable();
+
+            // Insurance metadata saved as real employee columns (as requested)
+            $table->string('insurance_provider')->nullable();
+            $table->string('insurance_policy_number')->nullable();
+            $table->string('insurance_card_number')->nullable();
+            $table->date('insurance_start_date')->nullable();
+            $table->date('insurance_end_date')->nullable();
+
             $table->text('address')->nullable();
             $table->string('photo')->nullable();
+
             $table->timestamps();
             $table->softDeletes();
         });

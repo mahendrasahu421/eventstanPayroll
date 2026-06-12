@@ -37,9 +37,11 @@ class PayrollController extends Controller
             'Overtime Hours',
             'Food Deduction',
             'Other Deduction',
-            'Visa Deduction',
+            'Visa Total Amount',
+            'Visa Total Installments',
             'Insurance Deduction',
-            'Advance Deduction',
+            'Advance Total Amount',
+            'Advance Total Installments',
         ];
 
         $sampleRow = [
@@ -48,6 +50,9 @@ class PayrollController extends Controller
             '',
             '2500',
             '30',
+            '0',
+            '0',
+            '0',
             '0',
             '0',
             '0',
@@ -85,15 +90,17 @@ class PayrollController extends Controller
         $salaryDetails = $employees->mapWithKeys(function (Employee $employee) {
             $salary = $employee->salaryStructure;
 
-            return [$employee->id => [
-                'basic_salary' => (float) ($salary?->basic_salary ?? 0),
-                'overtime_rate_per_hour' => (float) ($salary?->overtime_rate_per_hour ?? 0),
-                'wps_first_transfer_amount' => (float) ($salary?->wps_first_transfer_amount ?? 0),
-                'food_deduction' => (float) ($salary?->food_deduction ?? 0),
-                'visa_deduction' => (float) ($salary?->visa_deduction ?? 0),
-                'insurance_deduction' => (float) ($salary?->insurance_deduction ?? 0),
-                'advance_payment' => (float) ($salary?->advance_payment ?? 0),
-            ]];
+            return [
+                $employee->id => [
+                    'basic_salary' => (float) ($salary?->basic_salary ?? 0),
+                    'overtime_rate_per_hour' => (float) ($salary?->overtime_rate_per_hour ?? 0),
+                    'wps_first_transfer_amount' => (float) ($salary?->wps_first_transfer_amount ?? 0),
+                    'food_deduction' => (float) ($salary?->food_deduction ?? 0),
+                    'visa_deduction' => (float) ($salary?->visa_deduction ?? 0),
+                    'insurance_deduction' => (float) ($salary?->insurance_deduction ?? 0),
+                    'advance_payment' => (float) ($salary?->advance_payment ?? 0),
+                ]
+            ];
         });
 
         return view('payroll.custom-payment', compact('employees', 'month', 'salaryDetails'));
@@ -204,7 +211,7 @@ class PayrollController extends Controller
                     'food_deduction' => (float) ($validated['food_deduction'] ?? ($employee->salaryStructure?->food_deduction ?? 0)),
                     // Bulk/import ke case me agar excel me visa_deduction diya gaya hai, usi ko prioritize karein.
                     'visa_deduction' => (array_key_exists('visa_deduction', $validated) ? (float) $validated['visa_deduction'] : (float) ($employee->salaryStructure?->visa_deduction ?? 0)),
-                    'insurance_deduction' => (float) ($validated['insurance_deduction'] ?? ($employee->salaryStructure?->insurance_deduction ?? 0)),
+                    'insurance_deduction' => (float) ($employee->salaryStructure?->insurance_deduction ?? 0),
                     'advance_deduction' => (float) ($validated['advance_deduction'] ?? $employee->salaryStructure?->advance_payment ?? 0),
                     'other_deduction' => (float) ($validated['other_deduction'] ?? 0),
                     'wps_first_transfer' => (float) ($validated['wps_first_transfer'] ?? ($employee->salaryStructure?->wps_first_transfer_amount ?? 0)),
@@ -292,9 +299,9 @@ class PayrollController extends Controller
 
         $summary = [
             'employee_count' => $records->count(),
-            'total_gross' => $records->sum(fn ($r) => (float) ($r->gross_salary ?? 0)),
-            'total_deductions' => $records->sum(fn ($r) => (float) ($r->total_deductions ?? 0)),
-            'total_net' => $records->sum(fn ($r) => (float) ($r->net_salary ?? 0)),
+            'total_gross' => $records->sum(fn($r) => (float) ($r->gross_salary ?? 0)),
+            'total_deductions' => $records->sum(fn($r) => (float) ($r->total_deductions ?? 0)),
+            'total_net' => $records->sum(fn($r) => (float) ($r->net_salary ?? 0)),
         ];
 
         $departmentReport = [];
@@ -353,7 +360,7 @@ class PayrollController extends Controller
         $wpsData = [];
         foreach ($records as $record) {
             $employee = $record->employee;
-            if (! $employee) {
+            if (!$employee) {
                 continue;
             }
 
@@ -364,7 +371,7 @@ class PayrollController extends Controller
 
             $wpsData[] = [
                 'wps_personal_number' => (string) ($employee->wps_personal_number ?? $employee->employee_code ?? ''),
-                'employee_name' => (string) ($employee->full_name ?? trim(($employee->first_name ?? '').' '.($employee->last_name ?? ''))),
+                'employee_name' => (string) ($employee->full_name ?? trim(($employee->first_name ?? '') . ' ' . ($employee->last_name ?? ''))),
                 'iban' => $iban,
                 'net_salary' => (float) ($record->net_salary ?? 0),
             ];
@@ -411,7 +418,7 @@ class PayrollController extends Controller
         foreach ($employeePayloads as $row) {
             try {
                 $employeeId = $row['employee_id'] ?? $row['employeeId'] ?? null;
-                if (! $employeeId) {
+                if (!$employeeId) {
                     throw new \InvalidArgumentException('Missing employee_id');
                 }
 
@@ -547,7 +554,6 @@ class PayrollController extends Controller
      * Show the payroll process form with employees
      */
     public function processForm()
-
     {
         $employees = Employee::with(['company', 'department', 'designation', 'salaryStructure'])->get();
         return view('payroll.process', compact('employees'));
@@ -556,55 +562,77 @@ class PayrollController extends Controller
     /**
      * Returns defaults used by resources/views/payroll/process.blade.php
      */
-   /**
- * Returns defaults used by resources/views/payroll/process.blade.php
- */
-/**
- * Returns defaults used by resources/views/payroll/process.blade.php
- */
-public function employeeDefaults(int $id)
+    /**
+     * Returns defaults used by resources/views/payroll/process.blade.php
+     */
+    /**
+     * Returns defaults used by resources/views/payroll/process.blade.php
+     */
+   public function employeeDefaults(int $id)
 {
     try {
         $employee = Employee::with([
             'salaryStructure',
-            'company'
+            'company',
+            'advances' => function ($query) {
+                $query->where('status', 'active')
+                      ->where('pending_amount', '>', 0);
+            }
         ])->findOrFail($id);
     } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Employee not found'
-        ], 404);
+        return response()->json(['success' => false, 'message' => 'Employee not found'], 404);
     }
 
     $salaryStructure = $employee->salaryStructure;
-    $company = $employee->company;
-    $month = now()->format('Y-m');
-    
-    // Get advance deduction directly from salary_structures table advance_payment column
-    $advanceDeduction = (float) ($salaryStructure?->advance_payment ?? 0);
+    $company         = $employee->company;
+    $month           = now()->format('Y-m');
+
+    // ✅ advances table se installment-based advance deduction
+    $advanceDeduction = 0.0;
+    foreach ($employee->advances as $advance) {
+        // Visa wale advances skip karo
+        if (is_string($advance->reason) && str_contains($advance->reason, 'Visa Charges')) {
+            continue;
+        }
+
+        // Is month already recover hua hai?
+        $alreadyRecovered = \App\Models\AdvanceRecovery::where('advance_payment_id', $advance->id)
+            ->where('recovery_month', $month)
+            ->exists();
+
+        if ($alreadyRecovered) continue;
+
+        $advanceDeduction += min((float) $advance->installment_amount, (float) $advance->pending_amount);
+    }
     $advanceDeduction = round($advanceDeduction, 2);
 
-    // Get existing payroll record for current month
+    // ✅ custom_fields se Other Deductions nikalo
+    $customFields = $employee->custom_fields ?? [];
+    if (is_string($customFields)) {
+        $customFields = json_decode($customFields, true) ?? [];
+    }
+    $otherDeduction = (float) ($customFields['Other Deductions'] ?? 0);
+
     $existingPayroll = PayrollRecord::where('employee_id', $employee->id)
         ->where('payroll_month', $month)
         ->first();
 
     return response()->json([
         'success' => true,
-        'data' => [
-            'food_deduction' => (float) ($salaryStructure?->food_deduction ?? 0),
-            'visa_deduction' => (float) $this->calculateVisaInstallmentDeduction($employee, $month),
-            'insurance_deduction' => (float) ($salaryStructure?->insurance_deduction ?? 0),
-            'other_deduction' => (float) ($salaryStructure?->other_deduction ?? 0),
-            'advance_deduction' => $advanceDeduction, // This will now show 150
-            'wps_first_transfer' => (float) ($salaryStructure?->wps_first_transfer_amount ?? 0),
-            'present_days' => (int) ($existingPayroll?->present_days ?? $employee->present_days ?? 30),
+        'data'    => [
+            'food_deduction'         => (float) ($salaryStructure?->food_deduction ?? 0),
+            'visa_deduction'         => (float) $this->calculateVisaInstallmentDeduction($employee, $month),
+            'insurance_deduction'    => (float) ($salaryStructure?->insurance_deduction ?? 0),
+            'other_deduction'        => $otherDeduction,
+            'advance_deduction'      => $advanceDeduction, // ✅ advances table se
+            'wps_first_transfer'     => (float) ($salaryStructure?->wps_first_transfer_amount ?? 0),
+            'present_days'           => (int) ($existingPayroll?->present_days ?? 30),
             'working_days_per_month' => (int) ($company?->working_days_per_month ?? 30),
-            'overtime_hours' => (float) ($existingPayroll?->overtime_hours ?? $employee->overtime_hours ?? 0),
-            'overtime_rate' => (float) ($salaryStructure?->overtime_rate_per_hour ?? $company?->overtime_rate ?? 0),
+            'overtime_hours'         => (float) ($existingPayroll?->overtime_hours ?? 0),
+            'overtime_rate'          => (float) ($salaryStructure?->overtime_rate_per_hour ?? $company?->overtime_rate ?? 0),
             'overtime_rate_per_hour' => (float) ($salaryStructure?->overtime_rate_per_hour ?? $company?->overtime_rate ?? 0),
-            'basic_salary' => (float) ($salaryStructure?->basic_salary ?? 0),
-            'total_monthly' => (float) (
+            'basic_salary'           => (float) ($salaryStructure?->basic_salary ?? 0),
+            'total_monthly'          => (float) (
                 ($salaryStructure?->basic_salary ?? 0) +
                 ($salaryStructure?->housing_allowance ?? 0) +
                 ($salaryStructure?->transport_allowance ?? 0) +
@@ -690,7 +718,7 @@ public function employeeDefaults(int $id)
                 'monthly_advance_deduction' => $monthlyAdvanceDeduction,
 
                 // Previous Payroll for this month (if exists)
-'existing_payroll' => PayrollRecord::where('employee_id', $employee->id)
+                'existing_payroll' => PayrollRecord::where('employee_id', $employee->id)
                     ->where('payroll_month', request()->month ?? now()->format('Y-m'))
                     ->first(),
             ]
@@ -732,12 +760,12 @@ public function employeeDefaults(int $id)
         DB::beginTransaction();
         try {
             $payrollData = $this->calculatePayrollData($request->all());
-$payrollData['payroll_month'] = $request->month;
+            $payrollData['payroll_month'] = $request->month;
             $payrollData['status'] = $request->save_status;
             $payrollData['company_id'] = $request->company_id;
             $payrollData['processed_at'] = now();
 
-PayrollRecord::updateOrCreate(
+            PayrollRecord::updateOrCreate(
                 [
                     'employee_id' => $request->employee_id,
                     'payroll_month' => $request->month,
@@ -760,59 +788,59 @@ PayrollRecord::updateOrCreate(
      * Core business logic for payroll calculation
      */
     private function calculatePayrollData(array $input)
-{
-    $employee = Employee::with(['salaryStructure', 'company'])->findOrFail($input['employee_id']);
-    $company = $employee->company;
+    {
+        $employee = Employee::with(['salaryStructure', 'company'])->findOrFail($input['employee_id']);
+        $company = $employee->company;
 
-    $payrollMonth = $input['payroll_month'] ?? ($input['month'] ?? now()->format('Y-m'));
+        $payrollMonth = $input['payroll_month'] ?? ($input['month'] ?? now()->format('Y-m'));
 
-    // Get values from input or from employee's saved data
-    $basicSalary = (float) ($input['basic_salary'] ?? $employee->salaryStructure?->basic_salary ?? 0);
-    $totalMonthly = $basicSalary;
+        // Get values from input or from employee's saved data
+        $basicSalary = (float) ($input['basic_salary'] ?? $employee->salaryStructure?->basic_salary ?? 0);
+        $totalMonthly = $basicSalary;
 
-    // Add allowances if any
-    $totalMonthly += (float) ($input['housing_allowance'] ?? $employee->salaryStructure?->housing_allowance ?? 0);
-    $totalMonthly += (float) ($input['transport_allowance'] ?? $employee->salaryStructure?->transport_allowance ?? 0);
-    $totalMonthly += (float) ($input['medical_allowance'] ?? $employee->salaryStructure?->medical_allowance ?? 0);
-    $totalMonthly += (float) ($input['other_allowance'] ?? $employee->salaryStructure?->other_allowance ?? 0);
+        // Add allowances if any
+        $totalMonthly += (float) ($input['housing_allowance'] ?? $employee->salaryStructure?->housing_allowance ?? 0);
+        $totalMonthly += (float) ($input['transport_allowance'] ?? $employee->salaryStructure?->transport_allowance ?? 0);
+        $totalMonthly += (float) ($input['medical_allowance'] ?? $employee->salaryStructure?->medical_allowance ?? 0);
+        $totalMonthly += (float) ($input['other_allowance'] ?? $employee->salaryStructure?->other_allowance ?? 0);
 
-    // Working days and attendance (dynamic from company if input empty)
-    $workingDaysInput = $input['working_days'] ?? null;
-    $workingDays = (int) (
-        ($workingDaysInput !== null && $workingDaysInput !== '')
-        ? $workingDaysInput
-        : ($company?->working_days_per_month ?? 30)
-    );
+        // Working days and attendance (dynamic from company if input empty)
+        $workingDaysInput = $input['working_days'] ?? null;
+        $workingDays = (int) (
+            ($workingDaysInput !== null && $workingDaysInput !== '')
+            ? $workingDaysInput
+            : ($company?->working_days_per_month ?? 30)
+        );
 
-    // Ensure present_days is always numeric (UI validates max 31)
-    $presentDays = (float) ($input['present_days'] ?? 0);
-    if ($presentDays < 0)
-        $presentDays = 0;
-    if ($workingDays > 0 && $presentDays > $workingDays)
-        $presentDays = (float) $workingDays;
+        // Ensure present_days is always numeric (UI validates max 31)
+        $presentDays = (float) ($input['present_days'] ?? 0);
+        if ($presentDays < 0)
+            $presentDays = 0;
+        if ($workingDays > 0 && $presentDays > $workingDays)
+            $presentDays = (float) $workingDays;
 
-    $dailyRate = $workingDays > 0 ? ($totalMonthly / $workingDays) : 0;
-    $daysWorkedAmount = $dailyRate * $presentDays;
+        $dailyRate = $workingDays > 0 ? ($totalMonthly / $workingDays) : 0;
+        $daysWorkedAmount = $dailyRate * $presentDays;
 
-    // Overtime calculation (dynamic from company rate if not provided)
-    $overtimeHours = (float) ($input['overtime_hours'] ?? 0);
-    if ($overtimeHours < 0)
-        $overtimeHours = 0;
+        // Overtime calculation (dynamic from company rate if not provided)
+        $overtimeHours = (float) ($input['overtime_hours'] ?? 0);
+        if ($overtimeHours < 0)
+            $overtimeHours = 0;
 
-    // Overtime rate priority: salary structure -> company default -> 1.5
-    $companyOvertimeRate = (float) (
-        $employee->salaryStructure?->overtime_rate_per_hour
+        // Overtime rate priority: salary structure -> company default -> 1.5
+        $companyOvertimeRate = (float) (
+            $employee->salaryStructure?->overtime_rate_per_hour
             ?? $company?->overtime_rate
             ?? 1.5
-    );
-    $hourlyRate = $dailyRate > 0 ? ($dailyRate / 8) : 0;
+        );
+        $hourlyRate = $dailyRate > 0 ? ($dailyRate / 8) : 0;
 
-    $overtimeAmount = $overtimeHours * $companyOvertimeRate;
+        $overtimeAmount = $overtimeHours * $companyOvertimeRate;
 
-    $grossSalary = $daysWorkedAmount + $overtimeAmount;
+        $grossSalary = $daysWorkedAmount + $overtimeAmount;
 
-    // Deductions - food/insurance from salary structure (or UI override)
-    $foodDeduction = (float) ($input['food_deduction'] ?? $employee->salaryStructure?->food_deduction ?? 0);
+        // Deductions - food/insurance from salary structure (or UI override)
+        $foodDeduction = (float) ($input['food_deduction'] ?? $employee->salaryStructure?->food_deduction ?? 0);
 
         // Visa deduction: always use installment-based recovery for this payroll month.
         // UI/input may carry "full Visa charges" in some flows, so never trust input as the monthly deduction.
@@ -820,98 +848,67 @@ PayrollRecord::updateOrCreate(
 
 
 
-    $insuranceDeduction = (float) ($input['insurance_deduction'] ?? $employee->salaryStructure?->insurance_deduction ?? 0);
+        // Business rule: insurance deduction employee table ke salary_structure se hi aayegi.
+// UI/Excel input insurance_deduction ko override nahi karega (avoid wrong/blank values).
+        $insuranceDeduction = (float) ($employee->salaryStructure?->insurance_deduction ?? 0);
 
-    // Advance should go to others (as you requested) so we do NOT treat salary_structure advance_payment as advance_deduction here.
-    // We compute installment-based advance, then add into other_deduction.
-    $advanceDeduction = $this->calculateAdvanceDeduction($employee, $payrollMonth);
+        // Advance should go to others (as you requested) so we do NOT treat salary_structure advance_payment as advance_deduction here.
+        // We compute installment-based advance, then add into other_deduction.
+        $advanceDeduction = $this->calculateAdvanceDeduction($employee, $payrollMonth);
 
 
-    // other_deduction from UI + computed advance installment
-    $otherDeduction = (float) ($input['other_deduction'] ?? 0);
-    $otherDeduction += (float) $advanceDeduction;
+        // other_deduction: UI override se aayega, warna employee custom_fields['Other Deductions'] se
+        $customFields = $employee->custom_fields ?? [];
+        if (is_string($customFields)) {
+            $customFields = json_decode($customFields, true) ?? [];
+        }
 
-    // Recalculate total deductions
-    $totalDeductions = $foodDeduction + $visaDeduction + $insuranceDeduction + $otherDeduction;
-    $netSalary = $grossSalary - $totalDeductions;
+        $otherDeduction = (float) (
+            (array_key_exists('other_deduction', $input) && $input['other_deduction'] !== '' && $input['other_deduction'] !== null)
+            ? $input['other_deduction']
+            : ($customFields['Other Deductions'] ?? 0)
+        );
+        // Recalculate total deductions (advance alag category me, but total me include)
+        $totalDeductions = $foodDeduction + $visaDeduction + $insuranceDeduction + $advanceDeduction + $otherDeduction;
+        $netSalary = $grossSalary - $totalDeductions;
 
-    // WPS splitting
-    $wpsFirstTransfer = (float) ($input['wps_first_transfer'] ?? $employee->salaryStructure?->wps_first_transfer_amount ?? 0);
-    if ($wpsFirstTransfer > $netSalary) {
-        $wpsFirstTransfer = $netSalary;
+        // WPS splitting
+        $wpsFirstTransfer = (float) ($input['wps_first_transfer'] ?? $employee->salaryStructure?->wps_first_transfer_amount ?? 0);
+        if ($wpsFirstTransfer > $netSalary) {
+            $wpsFirstTransfer = $netSalary;
+        }
+        $wpsSecondTransfer = max(0, $netSalary - $wpsFirstTransfer);
+
+        return [
+            'employee_id' => $employee->id,
+            'company_id' => $company?->id,
+            'currency_symbol' => $company?->currency_symbol ?? 'AED',
+            'basic_salary' => round($basicSalary, 2),
+            'total_monthly' => round($totalMonthly, 2),
+            'working_days' => $workingDays,
+            'present_days' => $presentDays,
+            'daily_rate' => round($dailyRate, 2),
+            'days_worked_amount' => round($daysWorkedAmount, 2),
+            'overtime_hours' => $overtimeHours,
+            'overtime_rate' => round($companyOvertimeRate, 2),
+            'overtime_amount' => round($overtimeAmount, 2),
+            'gross_salary' => round($grossSalary, 2),
+            'food_deduction' => round($foodDeduction, 2),
+            'visa_deduction' => round($visaDeduction, 2),
+            'insurance_deduction' => round($insuranceDeduction, 2),
+
+            // advance deduction (month-wise)
+            'advance_deduction' => round($advanceDeduction, 2),
+            'other_deduction' => round($otherDeduction, 2),
+
+            'total_deductions' => round($totalDeductions, 2),
+            'net_salary' => round($netSalary, 2),
+            'wps_first_transfer' => round($wpsFirstTransfer, 2),
+            'wps_second_transfer' => round($wpsSecondTransfer, 2),
+        ];
+
+
     }
-    $wpsSecondTransfer = max(0, $netSalary - $wpsFirstTransfer);
-
-    return [
-        'employee_id' => $employee->id,
-        'company_id' => $company?->id,
-        'currency_symbol' => $company?->currency_symbol ?? 'AED',
-        'basic_salary' => round($basicSalary, 2),
-        'total_monthly' => round($totalMonthly, 2),
-        'working_days' => $workingDays,
-        'present_days' => $presentDays,
-        'daily_rate' => round($dailyRate, 2),
-        'days_worked_amount' => round($daysWorkedAmount, 2),
-        'overtime_hours' => $overtimeHours,
-        'overtime_rate' => round($companyOvertimeRate, 2),
-        'overtime_amount' => round($overtimeAmount, 2),
-        'gross_salary' => round($grossSalary, 2),
-        'food_deduction' => round($foodDeduction, 2),
-        'visa_deduction' => round($visaDeduction, 2),
-        'insurance_deduction' => round($insuranceDeduction, 2),
-
-        // advance_deduction column ko blank/0 rakha (advance installment others me add ho chuka)
-        'advance_deduction' => 0,
-        'other_deduction' => round($otherDeduction, 2),
-
-        'total_deductions' => round($totalDeductions, 2),
-        'net_salary' => round($netSalary, 2),
-        'wps_first_transfer' => round($wpsFirstTransfer, 2),
-        'wps_second_transfer' => round($wpsSecondTransfer, 2),
-    ];
-
-    // (old code below remains but is unreachable due to return)
-
-
-    $totalDeductions = $foodDeduction + $visaDeduction + $insuranceDeduction + $otherDeduction;
-    $netSalary = $grossSalary - $totalDeductions;
-
-
-    // WPS splitting
-    $wpsFirstTransfer = (float) ($input['wps_first_transfer'] ?? $employee->salaryStructure?->wps_first_transfer_amount ?? 0);
-    if ($wpsFirstTransfer > $netSalary) {
-        $wpsFirstTransfer = $netSalary;
-    }
-    $wpsSecondTransfer = max(0, $netSalary - $wpsFirstTransfer);
-
-    return [
-        'employee_id' => $employee->id,
-        'company_id' => $company?->id,
-        'currency_symbol' => $company?->currency_symbol ?? 'AED',
-        'basic_salary' => round($basicSalary, 2),
-        'total_monthly' => round($totalMonthly, 2),
-        'working_days' => $workingDays,
-        'present_days' => $presentDays,
-        'daily_rate' => round($dailyRate, 2),
-        'days_worked_amount' => round($daysWorkedAmount, 2),
-        'overtime_hours' => $overtimeHours,
-        'overtime_rate' => round($companyOvertimeRate, 2),
-        'overtime_amount' => round($overtimeAmount, 2),
-        'gross_salary' => round($grossSalary, 2),
-        'food_deduction' => round($foodDeduction, 2),
-        'visa_deduction' => round($visaDeduction, 2),
-        'insurance_deduction' => round($insuranceDeduction, 2),
-
-        // advance_deduction column ko blank/0 rakha (advance installment others me add ho chuka)
-        'advance_deduction' => 0,
-        'other_deduction' => round($otherDeduction, 2),
-
-        'total_deductions' => round($totalDeductions, 2),
-        'net_salary' => round($netSalary, 2),
-        'wps_first_transfer' => round($wpsFirstTransfer, 2),
-        'wps_second_transfer' => round($wpsSecondTransfer, 2),
-    ];
-}
 
     /**
      * Calculate visa installment deduction for a month.
@@ -984,7 +981,6 @@ PayrollRecord::updateOrCreate(
      * Salary slip view for a given payroll record.
      */
     public function salarySlip(int $record)
-
     {
         $payrollRecord = PayrollRecord::with([
             'employee' => function ($q) {
@@ -1045,5 +1041,3 @@ PayrollRecord::updateOrCreate(
         ]);
     }
 }
-
-

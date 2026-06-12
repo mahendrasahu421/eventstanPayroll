@@ -34,15 +34,26 @@ class Employee extends Model
         'iban',
         'wps_personal_number',
         'custom_fields',
+
+        // Insurance metadata stored as columns (not custom_fields)
+        'insurance_provider',
+        'insurance_policy_number',
+        'insurance_card_number',
+        'insurance_start_date',
+        'insurance_end_date',
+
         'address',
         'photo',
     ];
+
 
     protected $casts = [
         'date_of_birth' => 'date',
         'joining_date' => 'date',
         'confirmation_date' => 'date',
         'resignation_date' => 'date',
+        'insurance_start_date' => 'date',
+        'insurance_end_date' => 'date',
         'custom_fields' => 'array',
     ];
 

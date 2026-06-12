@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Edit Employee')
+@section('title', $employee->exists ? 'Edit Employee' : 'Create Employee')
 
 @section('content')
 <div class="container-fluid px-4">
@@ -8,11 +8,11 @@
     <div class="d-flex align-items-center justify-content-between mb-4">
         <div class="d-flex align-items-center gap-3">
             <div class="rounded-3 bg-warning bg-opacity-10 p-3">
-                <i class="bi bi-pencil-square fs-2 text-warning"></i>
+                <i class="bi {{ $employee->exists ? 'bi-pencil-square' : 'bi-person-plus' }} fs-2 text-primary"></i>
             </div>
             <div>
-                <h1 class="display-6 fw-bold mb-0" style="font-size: 2rem;">Edit Employee</h1>
-                <p class="text-muted mb-0">{{ $employee->full_name }} ({{ $employee->employee_code }})</p>
+                <h1 class="display-6 fw-bold mb-0" style="font-size: 2rem;">{{ $employee->exists ? 'Edit Employee' : 'Add New Employee' }}</h1>
+                <p class="text-muted mb-0">{{ $employee->exists ? $employee->full_name . ' (' . $employee->employee_code . ')' : 'Fill in the details below' }}</p>
             </div>
         </div>
         <div class="d-flex gap-2">
@@ -22,9 +22,9 @@
         </div>
     </div>
 
-    <form method="POST" action="{{ route('employees.update', $employee) }}" enctype="multipart/form-data" id="employeeForm">
+    <form method="POST" action="{{ $employee->exists ? route('employees.update', $employee) : route('employees.store') }}" enctype="multipart/form-data" id="employeeForm">
         @csrf 
-        @method('PUT')
+        @if($employee->exists) @method('PUT') @endif
 
         <div class="row g-4">
             {{-- Left Column - Photo & Basic Info --}}
@@ -64,7 +64,7 @@
                     <div class="card-body text-center py-4">
                         <i class="bi bi-qr-code fs-1 mb-2 opacity-75"></i>
                         <p class="text-uppercase small mb-1 opacity-75">Employee Identification Number</p>
-                        <h3 class="fw-bold mb-0 tracking-wide">{{ $employee->employee_code }}</h3>
+                        <h3 class="fw-bold mb-0 tracking-wide">{{ $employee->exists ? $employee->employee_code : \App\Models\Employee::generateEmployeeCode() }}</h3>
                     </div>
                 </div>
 
@@ -84,7 +84,7 @@
                         <hr class="my-3">
                         <div class="d-flex justify-content-between">
                             <small class="text-muted">Joined Date</small>
-                            <small class="fw-semibold">{{ $employee->joining_date?->format('d/m/y') ?? 'N/A' }}</small>
+                            <small class="fw-semibold">{{ $employee->joining_date?->format('d-m-Y') ?? 'N/A' }}</small>
                         </div>
                     </div>
                 </div>
@@ -141,6 +141,17 @@
                                            value="{{ old('phone', $employee->phone) }}" placeholder="+971 ...">
                                 </div>
                                 @error('phone') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Date of Birth</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light"><i class="bi bi-calendar-event"></i></span>
+                                    <input type="date" name="date_of_birth" 
+                                           class="form-control @error('date_of_birth') is-invalid @enderror" 
+                                           value="{{ old('date_of_birth', $employee->date_of_birth?->format('Y-m-d')) }}">
+                                </div>
+                                @error('date_of_birth') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                             </div>
 
                             <div class="col-md-6">
@@ -278,72 +289,69 @@
                         <h5 class="mb-0 fw-bold"><i class="bi bi-file-earmark-text me-2 text-primary"></i>Documents</h5>
                     </div>
                     <div class="card-body">
-                        @if($employee->documents->count())
-                        <div class="table-responsive mb-4">
-                            <table class="table table-sm table-hover">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Type</th>
-                                        <th>Number</th>
-                                        <th>Expiry Date</th>
-                                        <th>File</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($employee->documents as $doc)
-                                    <tr>
-                                        <td><i class="bi bi-file-text me-1 text-primary"></i> {{ ucfirst(str_replace('_', ' ', $doc->document_type)) }}</td>
-                                        <td>{{ $doc->document_number ?? '-' }}</td>
-                                        <td>{{ $doc->expiry_date?->format('d/m/y') ?? '-' }}</td>
-                                        <td>
-                                            @if($doc->file_path)
-                                                <a href="{{ Storage::url($doc->file_path) }}" target="_blank" class="btn btn-sm btn-outline-primary">
-                                                    <i class="bi bi-eye"></i> View
-                                                </a>
-                                            @else
-                                                <span class="text-muted">No file</span>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            @if($doc->isExpired())
-                                                <span class="badge bg-danger">Expired</span>
-                                            @elseif($doc->isExpiringSoon())
-                                                <span class="badge bg-warning">Expiring Soon</span>
-                                            @else
-                                                <span class="badge bg-success">Valid</span>
-                                            @endif
-                                        </td>
-                                    </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                        @endif
+                        <div class="accordion" id="documentsAccordion">
+                            @php
+                                $docTypes = [
+                                    'passport' => ['icon' => 'bi-passport', 'label' => 'Passport'],
+                                    'emirates_id' => ['icon' => 'bi-card-identity', 'label' => 'Emirates ID'],
+                                    'labour_card' => ['icon' => 'bi-briefcase', 'label' => 'Labour Card'],
+                                    'driving_license' => ['icon' => 'bi-car-front', 'label' => 'Driving License'],
+                                ];
+                            @endphp
 
-                        <div class="border rounded-3 p-3">
-                            <h6 class="fw-bold mb-3"><i class="bi bi-plus-circle me-1"></i> Add New Document</h6>
-                            <div class="row g-2">
-                                <div class="col-md-3">
-                                    <select name="new_document[type]" class="form-select form-select-sm">
-                                        <option value="">Select Type</option>
-                                        <option value="passport">Passport</option>
-                                        <option value="emirates_id">Emirates ID</option>
-                                        <option value="labour_card">Labour Card</option>
-                                        <option value="driving_license">Driving License</option>
-                                        <option value="visa">Visa</option>
-                                        <option value="degree">Degree Certificate</option>
-                                    </select>
+                            @foreach ($docTypes as $type => $data)
+                                @php
+                                    $existingDoc = $employee->documents->where('document_type', $type)->first();
+                                @endphp
+                                <div class="accordion-item border-0 mb-2">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button collapsed bg-light rounded p-2" type="button"
+                                            data-bs-toggle="collapse" data-bs-target="#collapse{{ ucfirst($type) }}"
+                                            style="font-size: 0.9rem;">
+                                            <i class="bi {{ $data['icon'] }} me-2 text-primary"></i>
+                                            {{ $data['label'] }}
+                                            @if($existingDoc) <span class="badge bg-success ms-2 small">Saved</span> @endif
+                                        </button>
+                                    </h2>
+                                    <div id="collapse{{ ucfirst($type) }}" class="accordion-collapse collapse">
+                                        <div class="accordion-body p-3">
+                                            <div class="row g-2">
+                                                <div class="col-md-4">
+                                                    <label class="form-label small text-muted mb-1">Number</label>
+                                                    <input type="text" name="documents[{{ $type }}][number]"
+                                                        class="form-control form-control-sm"
+                                                        value="{{ old("documents.$type.number", $existingDoc?->document_number ?? '') }}"
+                                                        placeholder="Document number">
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="form-label small text-muted mb-1">Issue Date</label>
+                                                    <input type="date" name="documents[{{ $type }}][issue_date]"
+                                                        class="form-control form-control-sm"
+                                                        value="{{ old("documents.$type.issue_date", $existingDoc?->issue_date?->format('d-m-Y') ?? '') }}">
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="form-label small text-muted mb-1">Expiry Date</label>
+                                                    <input type="date" name="documents[{{ $type }}][expiry_date]"
+                                                        class="form-control form-control-sm"
+                                                        value="{{ old("documents.$type.expiry_date", $existingDoc?->expiry_date?->format('d-m-Y') ?? '') }}">
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <label class="form-label small text-muted mb-1">File</label>
+                                                    @if($existingDoc && $existingDoc->file_path)
+                                                        <div class="mb-1">
+                                                            <a href="{{ Storage::url($existingDoc->file_path) }}" target="_blank" class="btn btn-xs btn-link p-0 text-decoration-none small">
+                                                                <i class="bi bi-eye"></i> View Current
+                                                            </a>
+                                                        </div>
+                                                    @endif
+                                                    <input type="file" name="documents[{{ $type }}][file]"
+                                                        class="form-control form-control-sm" accept="image/*,application/pdf">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="col-md-3">
-                                    <input type="text" name="new_document[number]" class="form-control form-control-sm" placeholder="Document Number">
-                                </div>
-                                <div class="col-md-2">
-                                    <input type="date" name="new_document[expiry_date]" class="form-control form-control-sm">
-                                </div>
-                                <div class="col-md-4">
-                                    <input type="file" name="new_document[file]" class="form-control form-control-sm" accept="image/*,application/pdf">
-                                </div>
+                            @endforeach
                             </div>
                         </div>
                     </div>

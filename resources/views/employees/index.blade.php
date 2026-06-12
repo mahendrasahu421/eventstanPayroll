@@ -31,6 +31,7 @@
         <div class="card-body">
             <div class="row g-3">
                 
+                
                 <div class="col-md-3">
                     <label class="form-label fw-semibold">Department</label>
                     <select id="departmentFilter" class="form-select">
@@ -48,7 +49,22 @@
                         <option value="inactive">Inactive</option>
                     </select>
                 </div>
-                
+
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">Search</label>
+                    <input type="text" id="searchInput" class="form-control" placeholder="Search employee...">
+                </div>
+
+                <div class="col-md-2">
+                    <label class="form-label fw-semibold">Per Page</label>
+                    <select id="perPageFilter" class="form-select">
+                        <option value="10">10</option>
+                        <option value="25" selected>25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+
                 <div class="col-md-2 d-flex align-items-end">
                     <button id="resetFilters" class="btn btn-outline-secondary w-100">
                         <i class="bi bi-arrow-repeat me-1"></i> Reset
@@ -173,7 +189,7 @@ $(document).ready(function() {
                 previous: "Previous"
             }
         },
-        pageLength: 25,
+        pageLength: 10,
         lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]]
     });
 
@@ -199,7 +215,7 @@ $(document).ready(function() {
         $('#searchInput').val('');
         $('#departmentFilter').val('');
         $('#statusFilter').val('');
-        $('#perPageFilter').val('25');
+        $('#perPageFilter').val('10');
         reloadTable();
     });
 
