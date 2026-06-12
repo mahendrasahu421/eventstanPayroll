@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('logo')->nullable();
             $table->string('currency')->default('AED');
             $table->string('currency_symbol')->default('د.إ');
-            $table->integer('working_days_per_month')->default(26);
+            $table->integer('working_days_per_month')->default(30);
             $table->decimal('overtime_rate', 10, 2)->nullable(); // Simple amount field
             $table->boolean('is_active')->default(true);
             $table->timestamps();

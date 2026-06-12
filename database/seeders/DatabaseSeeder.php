@@ -10,7 +10,9 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
 use Database\Seeders\CountriesSeeder;
-use Database\Seeders\CompanySettingsSeeder;
+// use Database\Seeders\CompanySettingsSeeder;
+// use Database\Seeders\CompanySeeder;
+
 
 
 
@@ -21,8 +23,12 @@ class DatabaseSeeder extends Seeder
         // Seed master data (lookup tables)
         $this->call(CountriesSeeder::class);
 
+        // ── Companies (Master Data) ─────────────────────────────────────────
+        $this->call(CompanySeeder::class);
+
         // ── Company Settings (Master Data) ─────────────────────────────────────────
         $this->call(CompanySettingsSeeder::class);
+
 
 
 

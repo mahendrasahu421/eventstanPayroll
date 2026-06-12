@@ -32,7 +32,7 @@
             <div class="card border-0 shadow-sm mb-4">
                 <div class="card-body text-center p-4">
                     @if($employee->photo)
-                        <img src="{{ Storage::url($employee->photo) }}" 
+                        <img src="{{ $employee->photo_url }}" 
                              class="rounded-circle mx-auto d-block mb-3 border border-4 border-white shadow-lg" 
                              style="width: 140px; height: 140px; object-fit: cover;">
                     @else
@@ -123,6 +123,10 @@
                         <div class="col-md-6">
                             <div class="border rounded-3 p-3 h-100">
                                 <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-muted">Date of Birth</span>
+                                    <span class="fw-semibold">{{ $employee->date_of_birth?->format('d-m-Y') ?? 'N/A' }}</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
                                     <span class="text-muted">Department</span>
                                     <span class="fw-semibold">{{ $employee->department?->name ?? '-' }}</span>
                                 </div>
@@ -132,7 +136,7 @@
                                 </div>
                                 <div class="d-flex justify-content-between">
                                     <span class="text-muted">Joining Date</span>
-                                    <span class="fw-semibold">{{ $employee->joining_date?->format('d/m/y') ?? 'N/A' }}</span>
+                                    <span class="fw-semibold">{{ $employee->joining_date?->format('d-m-Y') ?? 'N/A' }}</span>
                                 </div>
                             </div>
                         </div>
@@ -146,12 +150,10 @@
                                     <span class="text-muted">Payroll Company</span>
                                     <span class="fw-semibold">{{ $employee->company?->company_name ?? $employee->company?->name ?? $companyName ?? 'Not configured' }}</span>
                                 </div>
-                                @if($employee->custom_fields['insurance_provider'] ?? false)
-                                <div class="d-flex justify-content-between">
-                                    <span class="text-muted">Insurance</span>
-                                    <span class="fw-semibold">{{ $employee->custom_fields['insurance_provider'] }}</span>
-                                </div>
-                                @endif
+                                
+
+                              
+
                             </div>
                         </div>
                     </div>
@@ -447,6 +449,7 @@
                                             <tr>
                                                 <th>Type</th>
                                                 <th>Document Number</th>
+                                                <th>Issue Date</th>
                                                 <th>Expiry Date</th>
                                                 <th>File</th>
                                                 <th>Status</th>
@@ -460,12 +463,13 @@
                                                     <strong>{{ ucfirst(str_replace('_', ' ', $doc->document_type)) }}</strong>
                                                 </td>
                                                 <td>{{ $doc->document_number ?? '-' }}</td>
-                                                <td>{{ $doc->expiry_date?->format('d/m/y') ?? '-' }}</td>
+                                                <td>{{ $doc->issue_date?->format('d-m-Y') ?? '-' }}</td>
+                                                <td>{{ $doc->expiry_date?->format('d-m-Y') ?? '-' }}</td>
                                                 <td>
                                                     @if($doc->file_path)
-                                                        <a href="{{ Storage::url($doc->file_path) }}" target="_blank" class="btn btn-sm btn-outline-primary">
-                                                            <i class="bi bi-download"></i> View
-                                                        </a>
+                                                      <a href="{{ asset('storage/' . $doc->file_path) }}" target="_blank" class="btn btn-sm btn-outline-primary">
+    <i class="bi bi-download"></i> View
+</a>
                                                     @else
                                                         <span class="text-muted">No file</span>
                                                     @endif
@@ -534,27 +538,32 @@
                                 </div>
                             @endif
                         </div>
-
-                        {{-- Custom Fields Tab --}}
-                        <div class="tab-pane fade" id="custom" role="tabpanel">
-                            @if($employee->custom_fields && count($employee->custom_fields))
-                                <div class="row g-3">
-                                    @foreach($employee->custom_fields as $key => $value)
-                                        <div class="col-md-6">
-                                            <div class="border rounded-3 p-3">
-                                                <small class="text-muted d-block mb-1">{{ ucfirst(str_replace('_', ' ', $key)) }}</small>
-                                                <span class="fw-semibold">{{ $value }}</span>
-                                            </div>
-                                        </div>
-                                    @endforeach
-                                </div>
+{{-- Custom Fields Tab --}}
+<div class="tab-pane fade" id="custom" role="tabpanel">
+    @if($employee->custom_fields && count($employee->custom_fields))
+        <div class="row g-3">
+            @foreach($employee->custom_fields as $key => $value)
+                <div class="col-md-6">
+                    <div class="border rounded-3 p-3">
+                        <small class="text-muted d-block mb-1">{{ ucfirst(str_replace('_', ' ', $key)) }}</small>
+                        <span class="fw-semibold">
+                            @if(is_array($value))
+                                {{ implode(', ', $value) }}
                             @else
-                                <div class="text-center py-5">
-                                    <i class="bi bi-grid fs-1 text-muted mb-3 d-block"></i>
-                                    <p class="text-muted">No custom fields defined</p>
-                                </div>
+                                {{ $value }}
                             @endif
-                        </div>
+                        </span>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+    @else
+        <div class="text-center py-5">
+            <i class="bi bi-grid fs-1 text-muted mb-3 d-block"></i>
+            <p class="text-muted">No custom fields defined</p>
+        </div>
+    @endif
+</div>
                     </div>
                 </div>
             </div>

@@ -16,6 +16,7 @@ use App\Models\Country;
 use App\Models\CompanySetting;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Yajra\DataTables\Facades\DataTables;
+
 class EmployeeController extends Controller
 {
     private function payrollCompanyName(Employee $employee = null): ?string
@@ -24,97 +25,99 @@ class EmployeeController extends Controller
     }
 
     // Add this new method for AJAX data table
-public function ajaxEmployees(Request $request)
-{
-    $query = Employee::with(['department', 'designation', 'salaryStructure', 'company'])
-        ->orderBy('created_at', 'desc');
-    
-    // Apply department filter
-    if ($request->has('department') && !blank($request->department)) {
-        $query->where('department_id', $request->department);
+    public function ajaxEmployees(Request $request)
+    {
+        $query = Employee::with(['department', 'designation', 'salaryStructure', 'company'])
+            ->orderBy('created_at', 'desc');
+
+        // Apply department filter
+        if ($request->has('department') && !blank($request->department)) {
+            $query->where('department_id', $request->department);
+        }
+
+        // Apply status filter
+        if ($request->has('status') && !blank($request->status)) {
+            $query->where('status', $request->status);
+        }
+
+        // Apply company filter if needed
+        if ($request->has('company_id') && !blank($request->company_id)) {
+            $query->where('company_id', $request->company_id);
+        }
+
+        return DataTables::of($query)
+            ->addColumn('photo', function ($employee) {
+                if ($employee->photo) {
+                    return '<img src="/storage/' . $employee->photo . '" class="rounded-circle" width="40" height="40" style="object-fit: cover;">';
+                } else {
+                    $initials = substr($employee->first_name, 0, 1) . substr($employee->last_name, 0, 1);
+                    return '<div class="rounded-circle bg-light d-flex align-items-center justify-content-center" style="width:40px;height:40px;font-size:0.8rem;font-weight:600;">' . ($initials ?: 'N/A') . '</div>';
+                }
+            })
+            ->addColumn('employee_details', function ($employee) {
+                return '
+                    <div class="fw-semibold">' . e($employee->full_name) . '</div>
+                    <small class="text-muted">' . e($employee->employee_code) . '</small>
+                    ' . ($employee->email ? '<br><small class="text-muted"><i class="bi bi-envelope"></i> ' . e($employee->email) . '</small>' : '') . '
+                ';
+            })
+            ->addColumn('department_name', function ($employee) {
+                return $employee->department ? e($employee->department->name) : '-';
+            })
+            ->addColumn('designation_name', function ($employee) {
+                return $employee->designation ? e($employee->designation->name) : '-';
+            })
+            ->addColumn('basic_salary', function ($employee) {
+                $salary = $employee->salaryStructure?->basic_salary ?? 0;
+                if ($salary == 0)
+                    return '-';
+                return number_format($salary, 2) . ' AED';
+            })
+            ->addColumn('status', function ($employee) {
+                if ($employee->status == 'active') {
+                    return '<span class="badge bg-success">Active</span>';
+                }
+                return '<span class="badge bg-secondary">Inactive</span>';
+            })
+            ->addColumn('joining_date', function ($employee) {
+                if (!$employee->joining_date)
+                    return '-';
+                $date = new \DateTime($employee->joining_date);
+                return $date->format('d-m-y');
+            })
+            ->addColumn('actions', function ($employee) {
+                return '
+                    <div class="btn-group btn-group-sm" role="group">
+                        <a href="' . route('employees.show', $employee->id) . '" class="btn btn-outline-primary" title="View">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                        <a href="' . route('employees.edit', $employee->id) . '" class="btn btn-outline-warning" title="Edit">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        <button type="button" class="btn btn-outline-danger" title="Delete" 
+                                onclick="deleteEmployee(' . $employee->id . ', \'' . addslashes($employee->full_name) . '\')">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                ';
+            })
+            ->filter(function ($query) use ($request) {
+                // Apply search filter
+                if ($request->has('search') && !blank($request->search)) {
+                    $search = $request->search;
+                    $query->where(function ($q) use ($search) {
+                        $q->where('first_name', 'like', "%{$search}%")
+                            ->orWhere('last_name', 'like', "%{$search}%")
+                            ->orWhere('employee_code', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%")
+                            ->orWhere('phone', 'like', "%{$search}%");
+                    });
+                }
+            })
+            ->rawColumns(['photo', 'employee_details', 'status', 'actions'])
+            ->make(true);
     }
-    
-    // Apply status filter
-    if ($request->has('status') && !blank($request->status)) {
-        $query->where('status', $request->status);
-    }
-    
-    // Apply company filter if needed
-    if ($request->has('company_id') && !blank($request->company_id)) {
-        $query->where('company_id', $request->company_id);
-    }
-    
-    return DataTables::of($query)
-        ->addColumn('photo', function($employee) {
-            if ($employee->photo) {
-                return '<img src="/storage/'.$employee->photo.'" class="rounded-circle" width="40" height="40" style="object-fit: cover;">';
-            } else {
-                $initials = substr($employee->first_name, 0, 1) . substr($employee->last_name, 0, 1);
-                return '<div class="rounded-circle bg-light d-flex align-items-center justify-content-center" style="width:40px;height:40px;font-size:0.8rem;font-weight:600;">' . ($initials ?: 'N/A') . '</div>';
-            }
-        })
-        ->addColumn('employee_details', function($employee) {
-            return '
-                <div class="fw-semibold">' . e($employee->full_name) . '</div>
-                <small class="text-muted">' . e($employee->employee_code) . '</small>
-                ' . ($employee->email ? '<br><small class="text-muted"><i class="bi bi-envelope"></i> ' . e($employee->email) . '</small>' : '') . '
-            ';
-        })
-        ->addColumn('department_name', function($employee) {
-            return $employee->department ? e($employee->department->name) : '-';
-        })
-        ->addColumn('designation_name', function($employee) {
-            return $employee->designation ? e($employee->designation->name) : '-';
-        })
-        ->addColumn('basic_salary', function($employee) {
-            $salary = $employee->salaryStructure?->basic_salary ?? 0;
-            if ($salary == 0) return '-';
-            return number_format($salary, 2) . ' AED';
-        })
-        ->addColumn('status', function($employee) {
-            if ($employee->status == 'active') {
-                return '<span class="badge bg-success">Active</span>';
-            }
-            return '<span class="badge bg-secondary">Inactive</span>';
-        })
-        ->addColumn('joining_date', function($employee) {
-            if (!$employee->joining_date) return '-';
-            $date = new \DateTime($employee->joining_date);
-            return $date->format('d-m-y');
-        })
-        ->addColumn('actions', function($employee) {
-            return '
-                <div class="btn-group btn-group-sm" role="group">
-                    <a href="'.route('employees.show', $employee->id).'" class="btn btn-outline-primary" title="View">
-                        <i class="bi bi-eye"></i>
-                    </a>
-                    <a href="'.route('employees.edit', $employee->id).'" class="btn btn-outline-warning" title="Edit">
-                        <i class="bi bi-pencil"></i>
-                    </a>
-                    <button type="button" class="btn btn-outline-danger" title="Delete" 
-                            onclick="deleteEmployee('.$employee->id.', \''.addslashes($employee->full_name).'\')">
-                        <i class="bi bi-trash"></i>
-                    </button>
-                </div>
-            ';
-        })
-        ->filter(function ($query) use ($request) {
-            // Apply search filter
-            if ($request->has('search') && !blank($request->search)) {
-                $search = $request->search;
-                $query->where(function($q) use ($search) {
-                    $q->where('first_name', 'like', "%{$search}%")
-                      ->orWhere('last_name', 'like', "%{$search}%")
-                      ->orWhere('employee_code', 'like', "%{$search}%")
-                      ->orWhere('email', 'like', "%{$search}%")
-                      ->orWhere('phone', 'like', "%{$search}%");
-                });
-            }
-        })
-        ->rawColumns(['photo', 'employee_details', 'status', 'actions'])
-        ->make(true);
-}
-    
+
     public function designationsByDepartment(Department $department)
     {
         $designations = $department->designations()
@@ -134,26 +137,29 @@ public function ajaxEmployees(Request $request)
     }
 
     public function create()
-{
-    $departments = Department::where('is_active', true)->orderBy('name')->get();
-    $designations = Designation::where('is_active', true)->orderBy('name')->get();
-    $countries = Country::orderBy('name')->get();
-    $companies = Company::where('is_active', true)->orderBy('company_name')->get(); // Get active companies
-    $companyName = CompanySetting::value('company_name');
-    
-    return view('employees.create', compact('departments', 'designations', 'countries', 'companies', 'companyName'));
-}
+    {
+        $employee = new Employee(); // Empty employee model for the form
+        $departments = Department::where('is_active', true)->orderBy('name')->get()->unique('name')->values();
+        $designations = Designation::where('is_active', true)->orderBy('name')->get();
+        $countries = Country::orderBy('name')->get();
+        $companies = Company::where('is_active', true)->orderBy('company_name')->get();
+        $companyName = $this->payrollCompanyName();
+
+        return view('employees.form', compact('employee', 'departments', 'designations', 'countries', 'companies', 'companyName'));
+    }
 
     public function store(EmployeeRequest $request)
     {
         $validated = $request->validated();
-$employeeData = [
+
+        $employeeData = [
             'employee_code' => Employee::generateEmployeeCode(),
             'company_id' => $validated['company_id'],
             'first_name' => $validated['first_name'],
             'last_name' => $validated['last_name'],
             'email' => $validated['email'] ?? null,
             'phone' => $validated['phone'] ?? null,
+            'date_of_birth' => $validated['date_of_birth'] ?? null,
             'country_id' => $validated['country_id'] ?? null,
             'nationality' => $validated['nationality'] ?? null,
             'wps_personal_number' => $validated['wps_personal_number'] ?? null,
@@ -172,8 +178,13 @@ $employeeData = [
         }
 
         $customFields = $validated['custom_fields'] ?? [];
+
+       
+
+        // Remove insurance keys so they won't remain inside custom_fields.
+      
+
         if (empty($customFields['payroll_company'])) {
-            $companyName = CompanySetting::query()->value('company_name');
             $companyName = $this->payrollCompanyName();
 
             if (!empty($companyName)) {
@@ -181,9 +192,13 @@ $employeeData = [
             }
         }
 
-        $employeeData['custom_fields'] = array_merge($customFields, $request->input('dynamic_custom_fields', []));
+        $dynamicCustomFields = $request->input('dynamic_custom_fields', []);
+        $employeeData['custom_fields'] = array_merge($customFields, $dynamicCustomFields);
+       
+
         $employee = Employee::create($employeeData);
-        
+
+
         ActivityLog::record('created', "Employee {$employee->full_name} created", $employee);
 
         $salaryData = [
@@ -195,22 +210,46 @@ $employeeData = [
             'visa_deduction' => $validated['visa_deduction'] ?? 0,
             'insurance_deduction' => $validated['insurance_deduction'] ?? 0,
             'visa_total_installments' => $validated['visa_total_installments'] ?? 1,
-            'visa_total_amount' => $validated['visa_deduction'] ?? 0, // In your form, visa_deduction is labeled as Total Charges
+            'visa_total_amount' => $validated['visa_deduction'] ?? 0,
             'advance_payment' => $validated['advance_payment'] ?? 0,
-
+            // “Other Deductions” in the UI.
+            'other_allowance' => $validated['other_deduction'] ?? $validated['other_allowance'] ?? 0,
             'is_active' => true,
             'effective_from' => now(),
         ];
         $employee->salaryStructures()->create($salaryData);
 
-        $docTypes = ['passport', 'emirates_id', 'labour_card', 'driving_license'];
+        // Create Visa installments advance at employee creation time (so it exists immediately)
+        $visaTotalAmount = (float) ($validated['visa_deduction'] ?? 0);
+        $visaTotalInstallments = (int) ($validated['visa_total_installments'] ?? 1);
+
+        if ($visaTotalAmount > 0 && $visaTotalInstallments > 0) {
+            $monthlyInstallment = round($visaTotalAmount / $visaTotalInstallments, 2);
+
+            \App\Models\AdvancePayment::updateOrCreate(
+                [
+                    'employee_id' => $employee->id,
+                    'reason' => 'Visa Charges (Installments)',
+                    'status' => 'active',
+                ],
+                [
+                    'amount' => $visaTotalAmount,
+                    'advance_date' => now()->toDateString(),
+                    'installment_amount' => $monthlyInstallment,
+                    'total_installments' => $visaTotalInstallments,
+                    'pending_amount' => $visaTotalAmount,
+                ]
+            );
+        }
+
+        $docTypes = ['passport', 'emirates_id', 'insurance', 'driving_license'];
         foreach ($docTypes as $type) {
             if (isset($validated['documents'][$type])) {
                 $docData = [
                     'employee_id' => $employee->id,
                     'document_type' => $type,
                     'document_number' => $validated['documents'][$type]['number'] ?? null,
-                    'issue_date' => null,
+                    'issue_date' => $validated['documents'][$type]['issue_date'] ?? null,
                 ];
 
                 if (isset($validated['documents'][$type]['expiry_date'])) {
@@ -235,6 +274,7 @@ $employeeData = [
             'company',
             'department',
             'designation',
+            'advances', // Load advances fvto get visa installment details
             'salaryStructure',
             'documents',
             'advances.recoveries.payrollRecord',
@@ -254,33 +294,148 @@ $employeeData = [
             ->values();
 
         $designations = Designation::where('is_active', true)->orderBy('name')->get();
+        $employee->load(['advances', 'documents', 'salaryStructure']); // Ensure required relations are loaded for the form
         $countries = Country::query()->orderBy('name')->get();
+        $companies = Company::where('is_active', true)->orderBy('company_name')->get();
         $companyName = $this->payrollCompanyName();
 
-        return view('employees.edit', compact('employee', 'departments', 'designations', 'countries', 'companyName'));
+        return view('employees.form', compact('employee', 'departments', 'designations', 'countries', 'companies', 'companyName'));
     }
 
     public function update(EmployeeRequest $request, Employee $employee)
     {
         $old = $employee->toArray();
-        $data = $request->validated();
+        $validated = $request->validated();
 
-        if (!empty($data['country_id'])) {
-            $data['nationality'] = Country::query()->whereKey($data['country_id'])->value('name') ?? $data['nationality'];
+        // Keep nationality as text column
+        if (!empty($validated['country_id'])) {
+            $validated['nationality'] = Country::query()->whereKey($validated['country_id'])->value('name') ?? $validated['nationality'];
         }
 
+        // Build custom_fields the same way as store() to avoid edit errors / missing rows.
+        $fixedCustomFields = $validated['custom_fields'] ?? [];
+
+        // Inject payroll_company if missing.
         $companyName = $this->payrollCompanyName();
-        if (empty($data['custom_fields']['payroll_company']) && !empty($companyName)) {
-            $data['custom_fields']['payroll_company'] = $companyName;
+        if (empty($fixedCustomFields['payroll_company']) && !empty($companyName)) {
+            $fixedCustomFields['payroll_company'] = $companyName;
         }
 
+        // Remove insurance metadata from custom_fields if it exists there (we store insurance as columns).
+        foreach (['insurance_provider', 'insurance_policy_number', 'insurance_card_number', 'insurance_start_date', 'insurance_end_date'] as $k) {
+            unset($fixedCustomFields[$k]);
+        }
+
+        // Convert dynamic_custom_fields array[{name,value},...] into key=>value for custom_fields json.
+        $dynamicRows = $request->input('dynamic_custom_fields', []);
+        $dynamicCustomFields = [];
+        if (is_array($dynamicRows)) {
+            foreach ($dynamicRows as $row) {
+                if (!is_array($row))
+                    continue;
+                $name = $row['name'] ?? null;
+                $value = $row['value'] ?? null;
+
+                if ($name === null || $name === '') {
+                    continue;
+                }
+
+                $dynamicCustomFields[$name] = $value;
+            }
+        }
+
+        $validated['custom_fields'] = array_merge($fixedCustomFields, $dynamicCustomFields);
+
+        // Ensure insurance metadata stored as columns (not custom_fields)
+        $validated['insurance_provider'] = $request->input('custom_fields.insurance_provider')
+            ?? $request->input('insurance_provider')
+            ?? $employee->insurance_provider;
+        $validated['insurance_policy_number'] = $request->input('custom_fields.insurance_policy_number')
+            ?? $request->input('insurance_policy_number')
+            ?? $employee->insurance_policy_number;
+        $validated['insurance_card_number'] = $request->input('custom_fields.insurance_card_number')
+            ?? $request->input('insurance_card_number')
+            ?? $employee->insurance_card_number;
+        $validated['insurance_start_date'] = $request->input('custom_fields.insurance_start_date')
+            ?? $request->input('insurance_start_date')
+            ?? $employee->insurance_start_date;
+        $validated['insurance_end_date'] = $request->input('custom_fields.insurance_end_date')
+            ?? $request->input('insurance_end_date')
+            ?? $employee->insurance_end_date;
+
+
+        // Photo
         if ($request->hasFile('photo')) {
-            if ($employee->photo)
+            if ($employee->photo) {
                 Storage::disk('public')->delete($employee->photo);
-            $data['photo'] = $request->file('photo')->store('employees/photos', 'public');
+            }
+            $validated['photo'] = $request->file('photo')->store('employees/photos', 'public');
         }
 
-        $employee->update($data);
+        $employee->update($validated);
+
+        // ✅ Keep salary structure in sync with Insurance shown in employee form.
+        // Your payroll calculation uses salaryStructure->insurance_deduction.
+        if (array_key_exists('insurance_deduction', $validated)) {
+            $employee->salaryStructures()->update(['is_active' => false, 'effective_to' => now()]);
+            $employee->salaryStructures()->create([
+                'employee_id' => $employee->id,
+                'basic_salary' => $employee->salaryStructure?->basic_salary ?? ($validated['basic_salary'] ?? 0),
+                'housing_allowance' => $employee->salaryStructure?->housing_allowance ?? 0,
+                'transport_allowance' => $employee->salaryStructure?->transport_allowance ?? 0,
+                'medical_allowance' => $employee->salaryStructure?->medical_allowance ?? 0,
+                'other_allowance' => $employee->salaryStructure?->other_allowance ?? 0,
+                'increment_value' => $employee->salaryStructure?->increment_value ?? 0,
+                'overtime_rate_per_hour' => $employee->salaryStructure?->overtime_rate_per_hour ?? 0,
+                'wps_first_transfer_amount' => $employee->salaryStructure?->wps_first_transfer_amount ?? 0,
+                'food_deduction' => $employee->salaryStructure?->food_deduction ?? 0,
+                'visa_deduction' => $employee->salaryStructure?->visa_deduction ?? 0,
+                'insurance_deduction' => (float) $validated['insurance_deduction'],
+                'advance_payment' => $employee->salaryStructure?->advance_payment ?? 0,
+                'is_active' => true,
+                'effective_from' => now(),
+            ]);
+        }
+
+        // Update Documents (Passport, Emirates ID, etc.)
+        if (isset($validated['documents'])) {
+            foreach ($validated['documents'] as $type => $docData) {
+                if (empty($docData['number']) && empty($docData['expiry_date']) && !$request->hasFile("documents.{$type}.file")) {
+                    continue;
+                }
+
+                $updatePayload = [
+                    'document_number' => $docData['number'] ?? null,
+                    'issue_date' => $docData['issue_date'] ?? null,
+                    'expiry_date' => $docData['expiry_date'] ?? null,
+                ];
+
+                if ($request->hasFile("documents.{$type}.file")) {
+                    $updatePayload['file_path'] = $request->file("documents.{$type}.file")->store("employees/documents/{$employee->id}", 'public');
+                }
+
+                $employee->documents()->updateOrCreate(
+                    ['document_type' => $type],
+                    $updatePayload
+                );
+            }
+        }
+
+        // ✅ Sync Insurance columns -> documents tab (document_type='insurance')
+        $existingInsuranceDoc = $employee->documents()->where('document_type', 'insurance')->first();
+
+        $employee->documents()->updateOrCreate(
+            ['document_type' => 'insurance', 'employee_id' => $employee->id],
+            [
+                'document_number' => $employee->insurance_policy_number,
+                'issue_date' => $employee->insurance_start_date,
+                'expiry_date' => $employee->insurance_end_date,
+                'file_path' => $existingInsuranceDoc?->file_path,
+                'notes' => $employee->insurance_provider,
+            ]
+        );
+
+
         ActivityLog::record('updated', "Employee {$employee->full_name} updated", $employee, $old, $employee->toArray());
 
         return redirect()->route('employees.show', $employee)->with('success', 'Employee updated.');
@@ -291,11 +446,11 @@ $employeeData = [
         try {
             $employee->delete();
             ActivityLog::record('deleted', "Employee {$employee->full_name} deleted", $employee);
-            
+
             if (request()->ajax()) {
                 return response()->json(['success' => true, 'message' => 'Employee deleted successfully']);
             }
-            
+
             return redirect()->route('employees.index')->with('success', 'Employee deleted.');
         } catch (\Exception $e) {
             if (request()->ajax()) {
@@ -328,12 +483,40 @@ $employeeData = [
             'effective_from' => 'required|date',
         ]);
 
-        $employee->salaryStructures()->update(['is_active' => false, 'effective_to' => now()]);
-        $employee->salaryStructures()->create($validated + ['is_active' => true]);
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            $employee->salaryStructures()->update(['is_active' => false, 'effective_to' => now()]);
+            $structure = $employee->salaryStructures()->create($validated + ['is_active' => true]);
 
-        ActivityLog::record('salary_updated', "Salary structure updated for {$employee->full_name}", $employee);
+            // Sync Visa installment if visa_deduction is updated
+            if (isset($validated['visa_deduction']) && $validated['visa_deduction'] > 0) {
+                $totalInstallments = $validated['visa_total_installments'] ?? 1;
+                $monthlyInstallment = round($validated['visa_deduction'] / $totalInstallments, 2);
 
-        return redirect()->route('employees.show', $employee)->with('success', 'Salary structure saved.');
+                // Update or create the "Visa Charges (Installments)" advance record
+                \App\Models\AdvancePayment::updateOrCreate(
+                    [
+                        'employee_id' => $employee->id,
+                        'reason' => 'Visa Charges (Installments)',
+                        'status' => 'active'
+                    ],
+                    [
+                        'amount' => $validated['visa_deduction'],
+                        'advance_date' => now()->toDateString(),
+                        'installment_amount' => $monthlyInstallment,
+                        'total_installments' => $totalInstallments,
+                        'pending_amount' => $validated['visa_deduction'],
+                    ]
+                );
+            }
+
+            ActivityLog::record('salary_updated', "Salary structure updated for {$employee->full_name}", $employee);
+            \Illuminate\Support\Facades\DB::commit();
+            return redirect()->route('employees.show', $employee)->with('success', 'Salary structure saved.');
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            return back()->with('error', 'Error updating salary structure: ' . $e->getMessage());
+        }
     }
 
     public function uploadDocument(Request $request, Employee $employee)
@@ -363,25 +546,22 @@ $employeeData = [
 
     public function downloadImportTemplate()
     {
-        // IMPORTANT: headers must match the Excel import sample columns.
         $headers = [
-            'company',
-            'company_code',
-            'first_name',
-            'last_name',
-            'email',
-            'phone',
-            'date_of_birth',
-            'department',
-            'designation',
+            // Employee
+            'employee_id',
+            'employee_name',
+            'dob',
+            'passport_number',
+            'passport_expiry',
+            'visa_from',
+            'visa_expiry',
+            'wps_id',
             'nationality',
-            'wps_personal_number',
-            'joining_date',
-            'status',
-            'bank_name',
-            'bank_account_number',
-            'iban',
-            'address',
+            'company',
+            'insurance_effective',
+            'insurance_expiry',
+
+            // Salary Structure
             'basic_salary',
             'increment_value',
             'overtime_rate_per_hour',
@@ -389,75 +569,60 @@ $employeeData = [
             'food_deduction',
             'visa_deduction',
             'total_installments',
-            'insurance_deduction',
             'advance_payment',
-            'advance_date',
-            'Passport Number',
-            'Passport expiry date',
-            'Emirates ID Number',
-            'Emirated ID expiry date',
-            'Insurance policy number',
-            'Insurance card number',
-            'Insurance start date',
-            'Insurance End date',
-            'Other Deductions',
+            'insurance_deduction',
+            'other_deductions',
         ];
 
         $sampleRow = [
-            'Eventstan',
-            'EVT001',
-            'John',
-            'Doe',
-            'john.doe@example.com',
-            '971501234567',
+            // Employee
+            'EMP-0001',
+            'John Doe',
             now()->subYears(30)->format('Y-m-d'),
-            'Operations',
-            'Supervisor',
-            'United Arab Emirates',
-            'WPS-001',
-            now()->format('Y-m-d'),
-            'active',
-            'Emirates NBD',
-            '1234567890',
-            'AE070331234567890123456',
-            'Dubai, UAE',
-            '2500',
-            '0',
-            '15',
-            '2500',
-            '200',
-            '0',
-            '12',
-            '0',
-            '100',
-            now()->format('Y-m-d'),
-            'P1234567',
-            now()->addYears(5)->format('Y-m-d'),
-            'EID-998877',
+            'P12345678',
             now()->addYears(2)->format('Y-m-d'),
-            'POL-111',
-            'CARD-222',
+            '784-1234-5678901-1', // emirates id number
+            now()->addYears(1)->format('Y-m-d'), // emirates id expiry
+            '12345678901234',
+            'United Arab Emirates',
+            'Eventstan LLC',
             now()->subMonths(2)->format('Y-m-d'),
             now()->addYears(1)->format('Y-m-d'),
+
+            // Salary Structure
+            '5000',
+            '500',
+            '25',
+            '5000',
+            '300',
+            '500',
+            '12',
+            '200',
+            '100',
             '50',
         ];
 
+        // Sanity check — development mein uncomment karein
+        // throw_if(count($headers) !== count($sampleRow), \Exception::class,
+        //     'Header count (' . count($headers) . ') and sample row count (' . count($sampleRow) . ') do not match!'
+        // );
 
         $callback = function () use ($headers, $sampleRow) {
             $file = fopen('php://output', 'w');
+            fputs($file, "\xEF\xBB\xBF"); // UTF-8 BOM for Excel
             fputcsv($file, $headers);
             fputcsv($file, $sampleRow);
             fclose($file);
         };
 
         return response()->streamDownload($callback, 'employee-import-template.csv', [
-            'Content-Type' => 'text/csv',
+            'Content-Type' => 'text/csv; charset=UTF-8',
         ]);
     }
 
     public function import(Request $request)
     {
-$request->validate([
+        $request->validate([
             'file' => 'required|file|mimes:xlsx,csv|max:10240',
         ]);
 
